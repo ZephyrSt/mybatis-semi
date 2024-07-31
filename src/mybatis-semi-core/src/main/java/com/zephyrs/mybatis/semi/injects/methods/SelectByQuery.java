@@ -56,7 +56,6 @@ public class SelectByQuery extends AbstractInjectMethod {
             // 查询的条件
             StringBuilder whereScript = new StringBuilder("<where>");
             Field[] fields = queryType.getDeclaredFields();
-            List<Field> fieldsList = MetadataHelper.getAllFields(queryType);
             for (Field field : fields) {
                 StringBuilder fieldWhere = new StringBuilder();
                 fieldWhere.append(between(field, tableInfo));
