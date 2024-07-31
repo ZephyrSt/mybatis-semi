@@ -1,0 +1,3 @@
+com.zephyrs.mybatis.semi.spring.boot.autoconfigure.PageHelperAutoConfiguration
+com.zephyrs.mybatis.semi.spring.boot.autoconfigure.MybatisLanguageDriverAutoConfiguration
+com.zephyrs.mybatis.semi.spring.boot.autoconfigure.MybatisAutoConfiguration
