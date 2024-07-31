@@ -1,4 +1,4 @@
-###简单的mybatis脚手架
+### 简单的mybatis脚手架
 
 在mybatis的基础上进行通用功能的提取。
 
