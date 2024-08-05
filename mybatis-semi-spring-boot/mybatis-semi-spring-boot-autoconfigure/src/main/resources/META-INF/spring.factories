@@ -1,0 +1,10 @@
+
+# Auto Configure
+org.springframework.boot.autoconfigure.EnableAutoConfiguration=\
+top.zephyrs.mybatis.semi.spring.boot.autoconfigure.PageHelperAutoConfiguration,\
+top.zephyrs.mybatis.semi.spring.boot.autoconfigure.MybatisLanguageDriverAutoConfiguration,\
+top.zephyrs.mybatis.semi.spring.boot.autoconfigure.MybatisAutoConfiguration
+
+# Depends On Database Initialization Detectors
+org.springframework.boot.sql.init.dependency.DependsOnDatabaseInitializationDetector=\
+top.zephyrs.mybatis.semi.spring.boot.autoconfigure.MybatisDependsOnDatabaseInitializationDetector

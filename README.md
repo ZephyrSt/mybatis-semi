@@ -104,12 +104,13 @@ private Long userId;
 通过指定 mybatis-semi.global-config.key-generate.custom-key-creator 可以指定 custom 对应的自定义策略
 
 ```java
-public class MyKeyCreator implements KeyCreator<Long> {
+import java.util.UUID;
 
-    private long next = 1;
+public class MyKeyCreator implements KeyCreator<String> {
+
     @Override
-    public synchronized Long nextId() {
-        return next++;
+    public synchronized String nextId() {
+        return UUID.randomUUID().toString().replaceAll("-","");
     }
 }
 ```
