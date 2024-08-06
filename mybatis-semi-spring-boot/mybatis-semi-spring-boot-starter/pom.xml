@@ -3,14 +3,14 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>top.zephyrs</groupId>
     <artifactId>mybatis-semi-spring-boot-starter</artifactId>
-    <version>3.0.0</version>
+    <version>${semi-spring-boot-version}</version>
     <description>Mybatis common Mapper to simplify development.</description>
     <url>https://github.com/ZephyrSt/mybatis-semi</url>
 
     <properties>
-        <spring-boot-version>2.7.18</spring-boot-version>
+        <spring-boot-version>3.3.2</spring-boot-version>
         <semi-spring-boot-version>3.0.0</semi-spring-boot-version>
-        <semi-vesion>1.0</semi-vesion>
+        <mybatis-spring-version>3.0.3</mybatis-spring-version>
     </properties>
 
     <dependencies>
@@ -32,7 +32,7 @@
         <dependency>
             <groupId>org.mybatis</groupId>
             <artifactId>mybatis-spring</artifactId>
-            <version>2.1.2</version>
+            <version>${mybatis-spring-version}</version>
         </dependency>
     </dependencies>
 

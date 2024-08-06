@@ -75,8 +75,6 @@ public class SensitiveEncryptInterceptor implements Interceptor {
 
     @Override
     public Object plugin(Object target) {
-        //判断是否拦截这个类型对象（根据@Intercepts注解决定），然后决定是返回一个代理对象还是返回原对象。
-        //故我们在实现plugin方法时，要判断一下目标类型，如果是插件要拦截的对象时才执行Plugin.wrap方法，否则的话，直接返回目标本身。
         if (target instanceof ParameterHandlerWrapper) {
             return Plugin.wrap(target, this);
         }

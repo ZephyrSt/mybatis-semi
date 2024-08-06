@@ -3,7 +3,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>top.zephyrs</groupId>
     <artifactId>mybatis-semi-core</artifactId>
-    <version>1.0</version>
+    <version>1.1.0</version>
     <description>Mybatis common Mapper to simplify development.</description>
     <url>https://github.com/ZephyrSt/mybatis-semi</url>
 
@@ -112,6 +112,14 @@
                         </goals>
                     </execution>
                 </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <configuration>
+                    <source>17</source>
+                    <target>17</target>
+                </configuration>
             </plugin>
         </plugins>
     </build>

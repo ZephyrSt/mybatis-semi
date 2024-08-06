@@ -16,9 +16,9 @@ Maven引用
 
 ```xml
 <dependency>
-    <groupId>com.zephyrs</groupId>
-    <artifactId>mybatis-semi-spring-boot-starter</artifactId>
-    <version>Latest Version</version>
+<groupId>top.zephyrs</groupId>
+<artifactId>mybatis-semi-spring-boot-starter</artifactId>
+<version>Latest Version</version>
 </dependency>
 ```
 在Bean中使用注解标识表名与主键
@@ -34,22 +34,7 @@ public class User{
     // Column注解标识字段，一般可省略。 默认使用驼峰转下划线的方式对应字段名称
     @Column(value = "user_name" )
     private String username;
-    // Sensitive 注解标识需要加密存储， 可以指定加解密的实现类
-    @Sensitive(Md5Sensitive.class)
     private String password;
-    // 默认使用全局配置的公用实现，不配置则默认不加密
-    @Sensitive
-    private String phone;
-    private String email;
-    // LogicDelete 注解表示此字段用来标识逻辑删除状态
-    @LogicDelete(deletedValue = "1", existsValue = "0")
-    private Boolean deleted;
-    // Enable 注解表示此字段用来标识启用/禁用状态
-    @Enable(enabledValue = "true", disabledValue = "false")
-    private Boolean enabled;
-    @Column(update = false)
-    private Date createTime;
-    private Date modifyTime;
 }
 ```
 Mapper接口继承BaseMapper
@@ -60,7 +45,9 @@ Mapper接口继承BaseMapper
 public interface UserMapper extends BaseMapper<User> {
 }
 ```
-通过构建 SqlSessionFactory 使用：
+
+
+###### 通过构建 SqlSessionFactory 使用：
 ```java
 
 @Configuration
@@ -133,9 +120,15 @@ configuration.setKeyCreator(IdType.CUSTOM, new MyKeyCreator());
 ##### 敏感字段加密存储
 通过注解 @Sensitive 可以标识字段需要加密存储
 使用此功能需要指定加密策略的实现类，如：
-```
+```java
+@Table("ur_user")
+public class User{
+
+    @Primary
+    private Long userId;
     @Sensitive(Md5Sensitive.class)
     private String password;
+}
 ```
 也可以通过指定全局默认策略来实现：
 ```
@@ -151,30 +144,30 @@ mybatis-semi:
       # 如果不揭密，是否用null值来替换加密后的值
       use-null-on-not-decrypt: true
       # 默认的加解密方式
-      default-impl: com.example.MySensitive
+      default-impl: com.example.Md5Sensitive
 ```
-如果设置默认不解密，可以通过 @SensitiveDecrypt 注解标识指定的查询方法解密字段
+如果设置默认不解密（default-decrypt=false），可以通过 @SensitiveDecrypt 注解标识指定的查询方法解密字段
 ```java
 public interface UserMapper extends BaseMapper<User> {
     
+    // SensitiveDecrypt 注解表示此方法查询的结果集中  @Sensitive 注解标识的字段会解密
     @SensitiveDecrypt
     @Select("select * from ur_user where user_id = #{userId}")
     User selectOneDecrypt(@Param("userId") Long userId);
 
 }
 ```
-注：
-加密时，参数的类型必须包含@Sensitive注解标识的字段才会加密
-解密时，返回值的类型必须包含 @Sensitive注解标识的字段才会解密
+注：参数的类型必须包含 <b>@Sensitive</b> 注解标识的字段才会加解密
 
 ##### 自定义通用Mapper
-通过 InjectProcessor 可以配置自定义的通用方法
+通过 <b>InjectProcessor</b> 可以配置自定义的通用方法
 ```java
 
 public class MyInjectProcessor extends InjectProcessor {
 
     @Override
     public void loadMethods() {
+        
         this.addInject("insert", new Insert());
         this.addInject("updateById", new UpdateById());
         this.addInject("deleteById", new DeleteById());

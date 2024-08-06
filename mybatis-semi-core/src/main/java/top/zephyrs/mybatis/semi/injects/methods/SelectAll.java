@@ -28,20 +28,18 @@ public class SelectAll extends AbstractInjectMethod {
                 columnScript.append(column.getColumnName()).append(", ");
             }
         }
-        Integer maxRow = configuration.getGlobalConfig().getSelectAllMaxRow();
         String columns = columnScript.substring(0, columnScript.length()-2);
         //逻辑删除的不查询
         if(tableInfo.isLogical()) {
-            String sqlTemplate = "SELECT %s FROM %s WHERE %s=%s LIMIT 0, "+ maxRow;
+            String sqlTemplate = "SELECT %s FROM %s WHERE %s=%s";
             return String.format(sqlTemplate,
                     columns,
                     tableInfo.getTableName(),
                     tableInfo.getLogicalColumn(),
-                    tableInfo.getNoDeletedValue(),
-                    maxRow);
+                    tableInfo.getNoDeletedValue());
         }else {
-            String sqlTemplate = "SELECT %s FROM %s LIMIT 0, "+maxRow;
-            return String.format(sqlTemplate, columns, tableInfo.getTableName(), maxRow);
+            String sqlTemplate = "SELECT %s FROM %s";
+            return String.format(sqlTemplate, columns, tableInfo.getTableName());
         }
     }
 }
