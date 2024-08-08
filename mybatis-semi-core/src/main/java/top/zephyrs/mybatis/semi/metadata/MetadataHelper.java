@@ -7,15 +7,18 @@ import top.zephyrs.mybatis.semi.config.GlobalConfig;
 import top.zephyrs.mybatis.semi.config.LogicDeleteConfig;
 import top.zephyrs.mybatis.semi.exceptions.MetadataException;
 
+import java.beans.BeanInfo;
+import java.beans.IntrospectionException;
+import java.beans.Introspector;
+import java.beans.PropertyDescriptor;
 import java.io.Serializable;
 import java.lang.reflect.Field;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Map;
+import java.lang.reflect.Modifier;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 public class MetadataHelper {
 
@@ -116,9 +119,13 @@ public class MetadataHelper {
 
     private static List<ColumnInfo> parseField(Class<?> type) {
         List<ColumnInfo> columns = new ArrayList<>();
-        for (Field field : getAllFields(type)) {
-            ColumnInfo columnInfo = parseField(field);
-            columns.add(columnInfo);
+        try {
+            for (Field field : getProperty(type)) {
+                ColumnInfo columnInfo = parseField(field);
+                columns.add(columnInfo);
+            }
+        } catch (Exception e) {
+            throw new MetadataException("parse Bean property failed:"+ type.getName(), e);
         }
         return columns;
     }
@@ -173,8 +180,15 @@ public class MetadataHelper {
         return sb.toString();
     }
 
+    /**
+     * 获取Bean的所有非静态字段（包含父类字段）
+     * @param type 类型
+     * @return Bean的字段集合
+     */
     public static List<Field> getAllFields(Class<?> type) {
-        List<Field> fields = Arrays.asList(type.getDeclaredFields());
+        List<Field> fields = Arrays.stream(type.getDeclaredFields())
+                .filter(field -> !Modifier.isStatic(field.getModifiers())).collect(Collectors.toList());
+
         Class<?> superClass = type.getSuperclass();
         if(superClass!= null && !superClass.equals(Object.class)) {
             List<Field> superFields = getAllFields(superClass);
@@ -182,6 +196,33 @@ public class MetadataHelper {
         }
         return fields;
     }
+
+    /**
+     * 获取所有Bean的属性对应的字段（仅限字段与属性名称一致的情况）
+     * @param type 类型
+     * @return Bean的属性字段集合
+     * @throws Exception 反射执行异常
+     */
+    public static List<Field> getProperty(Class<?> type) throws Exception {
+        BeanInfo beanInfo = Introspector.getBeanInfo(type, Object.class);
+        if (beanInfo == null) {
+            return Collections.emptyList();
+        }
+        Set<String> propertyNameSet = new HashSet<>();
+        PropertyDescriptor[] propertyDescriptors = beanInfo.getPropertyDescriptors();
+        for(PropertyDescriptor descriptor: propertyDescriptors) {
+            propertyNameSet.add(descriptor.getName());
+        }
+        List<Field> fields = new ArrayList<>();
+        for(Field field: getAllFields(type)) {
+            if(propertyNameSet.contains(field.getName())) {
+                fields.add(field);
+            }
+        }
+        return fields;
+
+    }
+
 
     public static ColumnInfo getColumnByFieldName(TableInfo tableInfo, String fieldName) {
         for(ColumnInfo column: tableInfo.getColumns()) {

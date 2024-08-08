@@ -42,7 +42,7 @@ public class SensitiveHelper {
             synchronized (SensitiveBean.class) {
                 sensitiveBean = sensitiveBeanMap.get(clazz);
                 if (sensitiveBean == null) {
-                    List<Field> needSensitiveFields = MetadataHelper.getAllFields(clazz).stream().filter(field -> field.getAnnotation(Sensitive.class) != null).collect(Collectors.toList());
+                    List<Field> needSensitiveFields = getNeedSensitiveFields(clazz);
                     Map<Field, ISensitive> sensitiveMap = new HashMap<>();
                     for (Field field : needSensitiveFields) {
                         field.setAccessible(true);
@@ -69,6 +69,10 @@ public class SensitiveHelper {
             }
         }
         return sensitiveBean;
+    }
+
+    private static List<Field> getNeedSensitiveFields(Class<?> type){
+        return MetadataHelper.getAllFields(type).stream().filter(field -> field.getAnnotation(Sensitive.class) != null).collect(Collectors.toList());
     }
 
     public static class SensitiveBean {

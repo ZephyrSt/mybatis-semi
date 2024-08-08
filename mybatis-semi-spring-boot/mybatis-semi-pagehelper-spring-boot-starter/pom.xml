@@ -2,7 +2,7 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
     <modelVersion>4.0.0</modelVersion>
     <groupId>top.zephyrs</groupId>
-    <artifactId>mybatis-semi-spring-boot-starter</artifactId>
+    <artifactId>mybatis-semi-pagehelper-spring-boot-starter</artifactId>
     <version>${semi-spring-boot-version}</version>
     <description>Mybatis common Mapper to simplify development.</description>
     <url>https://github.com/ZephyrSt/mybatis-semi</url>
@@ -21,19 +21,9 @@
             <optional>true</optional>
         </dependency>
         <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-jdbc</artifactId>
-            <version>${spring-boot-version}</version>
-        </dependency>
-        <dependency>
             <groupId>top.zephyrs</groupId>
-            <artifactId>mybatis-semi-spring-boot-autoconfigure</artifactId>
+            <artifactId>mybatis-semi-pagehelper-spring-boot-autoconfigure</artifactId>
             <version>${semi-spring-boot-version}</version>
-        </dependency>
-        <dependency>
-            <groupId>org.mybatis</groupId>
-            <artifactId>mybatis-spring</artifactId>
-            <version>${mybatis-spring-version}</version>
         </dependency>
     </dependencies>
 

@@ -101,10 +101,12 @@ public class SelectByQuery extends AbstractInjectMethod {
 
     private String equal(Field field, TableInfo tableInfo) {
         Equal equal = field.getAnnotation(Equal.class);
+        ColumnInfo column;
         if(equal == null) {
-            return EMPTY_STR;
+            column = this.parseSelectColumn(tableInfo, field, EMPTY_STR);
+        }else {
+            column = this.parseSelectColumn(tableInfo, field, equal.value());
         }
-        ColumnInfo column = this.parseSelectColumn(tableInfo, field, equal.value());
         if (column == null) {
             return EMPTY_STR;
         }

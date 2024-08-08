@@ -299,6 +299,8 @@ userMapper.selectByQuery(query);
 ```
 
 ##### 分页查询
+这里没有专门实现分页功能，对于 springboot项目，通过提供 mybatis-semi-pagehelper-spring-boot-starter 实现分页功能
+用法同 pagehelper-spring-boot-starter
+请参考 [PageHelper文档](https://github.com/pagehelper/Mybatis-PageHelper)
 
-mybatis-semi-spring-boot-starter 已经集成 PageHelper, 请参考 [PageHelper文档](https://github.com/pagehelper/Mybatis-PageHelper)
 
