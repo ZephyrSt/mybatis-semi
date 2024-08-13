@@ -35,7 +35,7 @@ public class SelectAll extends AbstractInjectMethod {
             return String.format(sqlTemplate,
                     columns,
                     tableInfo.getTableName(),
-                    tableInfo.getLogicalColumn(),
+                    tableInfo.getLogicalColumn().getColumnName(),
                     tableInfo.getNoDeletedValue());
         }else {
             String sqlTemplate = "SELECT %s FROM %s";

@@ -31,7 +31,7 @@ public class ToggleEnable extends AbstractInjectMethod {
             return null;
         }
         ColumnInfo enableColumn = tableInfo.getEnableColumn();
-        String sqlTmpl = "UPDATE %s SET %s=CASE %s WHEN %s THEN $s ELSE %s END WHERE %s";
+        String sqlTmpl = "UPDATE %s SET %s=CASE %s WHEN %s THEN %s ELSE %s END WHERE %s";
         return String.format(sqlTmpl,
                 tableInfo.getTableName(),
                 enableColumn.getColumnName(),

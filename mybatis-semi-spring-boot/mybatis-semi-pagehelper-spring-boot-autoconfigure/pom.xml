@@ -10,11 +10,11 @@
 
 
   <properties>
-    <spring-boot-version>3.3.2</spring-boot-version>
-    <semi-spring-boot-version>3.0.0</semi-spring-boot-version>
-    <mybatis-spring-version>3.0.3</mybatis-spring-version>
+    <spring-boot-version>3.0.0</spring-boot-version>
     <pagehelper-version>5.3.2</pagehelper-version>
-    <semi-vesion>1.1.0</semi-vesion>
+    <semi-spring-boot-version>3.0.1</semi-spring-boot-version>
+    <mybatis-spring-version>3.0.4</mybatis-spring-version>
+    <semi-vesion>1.1.1</semi-vesion>
   </properties>
 
   <dependencies>
