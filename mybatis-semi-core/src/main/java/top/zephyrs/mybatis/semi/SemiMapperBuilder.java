@@ -72,13 +72,25 @@ public class SemiMapperBuilder {
                 continue;
             }
 
+            String mappedStatementId = type.getName() + "." + method.getName();
+
+            //敏感字段加解密功能
+            SensitiveConfig sensitiveCfg = configuration.getGlobalConfig().getSensitive();
+            if(sensitiveCfg != null && sensitiveCfg.isOpen()) {
+                if(!sensitiveCfg.isDefaultDecrypt()) {
+                    SensitiveDecrypt decrypt = method.getAnnotation(SensitiveDecrypt.class);
+                    if(decrypt != null) {
+                        configuration.addSensitiveMappedStatementIds(mappedStatementId);
+                    }
+                }
+            }
+
             String mappedProcessorId = method.getName();
             InjectMethod processor = configuration.getInjectMethod(mappedProcessorId);
             if(processor == null) {
                 continue;
             }
 
-            String mappedStatementId = type.getName() + "." + method.getName();
             if(configuration.hasStatement(mappedStatementId, false)) {
                 continue;
             }
@@ -189,16 +201,6 @@ public class SemiMapperBuilder {
         LanguageDriver languageDriver = getLanguageDriver(method);
         String mappedStatementId = type.getName() + "." + method.getName();
 
-        //敏感字段加解密功能
-        SensitiveConfig sensitiveCfg = configuration.getGlobalConfig().getSensitive();
-        if(sensitiveCfg != null && sensitiveCfg.isOpen()) {
-            if(!sensitiveCfg.isDefaultDecrypt()) {
-                SensitiveDecrypt decrypt = method.getAnnotation(SensitiveDecrypt.class);
-                if(decrypt != null) {
-                    configuration.addSensitiveMappedStatementIds(mappedStatementId);
-                }
-            }
-        }
         //代理的类
         Class<?> beanClass = getBeanType(type);
         if(beanClass == null) {
