@@ -44,11 +44,15 @@ public class SensitiveHelper {
                 if (sensitiveBean == null) {
                     List<Field> needSensitiveFields = getNeedSensitiveFields(clazz);
                     Map<Field, ISensitive> sensitiveMap = new HashMap<>();
+                    Set<Field> ignoreDecryptFieldSet = new HashSet<>();
                     for (Field field : needSensitiveFields) {
                         field.setAccessible(true);
                         Sensitive annotation = field.getAnnotation(Sensitive.class);
                         if(annotation == null) {
                             continue;
+                        }
+                        if(!annotation.needDecrypt()) {
+                            ignoreDecryptFieldSet.add(field);
                         }
                         Class<? extends ISensitive> sensitiveClass = annotation.value();
                         if (sensitiveClass == DefaultSensitive.class) {
@@ -63,7 +67,7 @@ public class SensitiveHelper {
                         }
                         sensitiveMap.put(field, sensitive);
                     }
-                    sensitiveBean = new SensitiveBean(clazz, sensitiveMap);
+                    sensitiveBean = new SensitiveBean(clazz, sensitiveMap, ignoreDecryptFieldSet);
                     sensitiveBeanMap.put(clazz, sensitiveBean);
                 }
             }
@@ -79,9 +83,12 @@ public class SensitiveHelper {
         private final Class<?> clazz;
         private final Map<Field, ISensitive> sensitiveMap;
 
-        SensitiveBean(Class<?> clazz, Map<Field, ISensitive> sensitiveMap) {
+        private final Set<Field> ignoreDecryptSet;
+
+        SensitiveBean(Class<?> clazz, Map<Field, ISensitive> sensitiveMap, Set<Field> ignoreDecryptSet) {
             this.clazz = clazz;
             this.sensitiveMap = sensitiveMap;
+            this.ignoreDecryptSet = ignoreDecryptSet;
         }
 
         public Class<?> getSensitiveClass() {
@@ -94,6 +101,10 @@ public class SensitiveHelper {
 
         ISensitive getSensitive(Field field) {
             return sensitiveMap.get(field);
+        }
+
+        public boolean isIgnore(Field field) {
+            return ignoreDecryptSet.contains(field);
         }
     }
 

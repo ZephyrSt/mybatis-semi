@@ -30,8 +30,18 @@ public class SensitiveDecryptInterceptor implements Interceptor {
         ResultSetHandlerWrapper resultSetHandler = (ResultSetHandlerWrapper)invocation.getTarget();
         MappedStatement mappedStatement = resultSetHandler.getMappedStatement();
         Object resultObject = invocation.proceed();
+        // null值不需要解密
         if (Objects.isNull(resultObject)) {
             return null;
+        }
+        // 查询方法的返回结果都是List，空集合直接返回
+        if(((List<?>)resultObject).isEmpty()) {
+            return resultObject;
+        }
+        // 加密需要的配置信息不存在，直接返回
+        SensitiveHelper.SensitiveBean sensitiveBean = SensitiveHelper.getSensitiveBean(config, ((List<?>)resultObject).get(0));
+        if(sensitiveBean == null) {
+            return resultObject;
         }
         // 判断是否需要解密
         SemiMybatisConfiguration configuration = (SemiMybatisConfiguration) mappedStatement.getConfiguration();
@@ -39,34 +49,24 @@ public class SensitiveDecryptInterceptor implements Interceptor {
         if (!configuration.isSensitiveDecrypt(mappedStatement.getId())) {
             needDecrypt = false;
         }
-        // 不使用Null值替换未解密字段
-        if (!needDecrypt && !config.isUseNullOnNotDecrypt()) {
-            return resultObject;
-        }
-        // 查询方法的返回结果都是List
-        if(((List<?>)resultObject).isEmpty()) {
-            return resultObject;
-        }
-        SensitiveHelper.SensitiveBean sensitiveBean = SensitiveHelper.getSensitiveBean(config, ((List<?>)resultObject).get(0));
-        if(sensitiveBean == null) {
-            return resultObject;
-        }
         try {
             for (Object result : (List<?>) resultObject) {
-                // 返回结果是Map， 不解析
+                // 基于Bean注解配置解析，返回结果是Map， 不解析,
                 if (result instanceof Map) {
                     return resultObject;
                 }
-                if (needDecrypt) {
-                    for (Field field : sensitiveBean.getFields()) {
-                        ISensitive sensitive = sensitiveBean.getSensitive(field);
+                for (Field field : sensitiveBean.getFields()) {
+                    ISensitive sensitive = sensitiveBean.getSensitive(field);
+                    if (sensitive != null) {
                         Object ciphertext = field.get(result);
-                        String original = ciphertext == null ? null : sensitive.decrypt(result, String.valueOf(ciphertext));
-                        field.set(result, original);
-                    }
-                } else if (config.isUseNullOnNotDecrypt()) {
-                    for (Field field : sensitiveBean.getFields()) {
-                        field.set(result, null);
+                        //不需要解密或忽略解密
+                        if (!needDecrypt || sensitiveBean.isIgnore(field)) {
+                            String original = ciphertext == null ? null : sensitive.normal(result, String.valueOf(ciphertext));
+                            field.set(result, original);
+                        }else {
+                            String original = ciphertext == null ? null : sensitive.decrypt(result, String.valueOf(ciphertext));
+                            field.set(result, original);
+                        }
                     }
                 }
             }

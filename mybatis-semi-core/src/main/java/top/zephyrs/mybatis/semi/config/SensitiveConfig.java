@@ -19,11 +19,6 @@ public class SensitiveConfig {
     private boolean defaultDecrypt = true;
 
     /**
-     * 当不解密时，是否用Null替换值
-     */
-    private boolean useNullOnNotDecrypt = false;
-
-    /**
      * 默认的加解密实现
      */
     private Class<? extends ISensitive> defaultImpl = NoneSensitive.class;
@@ -52,11 +47,4 @@ public class SensitiveConfig {
         this.defaultDecrypt = defaultDecrypt;
     }
 
-    public boolean isUseNullOnNotDecrypt() {
-        return useNullOnNotDecrypt;
-    }
-
-    public void setUseNullOnNotDecrypt(boolean useNullOnNotDecrypt) {
-        this.useNullOnNotDecrypt = useNullOnNotDecrypt;
-    }
 }
