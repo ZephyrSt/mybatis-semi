@@ -8,7 +8,6 @@ import top.zephyrs.mybatis.semi.config.LogicDeleteConfig;
 import top.zephyrs.mybatis.semi.exceptions.MetadataException;
 
 import java.beans.BeanInfo;
-import java.beans.IntrospectionException;
 import java.beans.Introspector;
 import java.beans.PropertyDescriptor;
 import java.io.Serializable;
@@ -40,8 +39,12 @@ public class MetadataHelper {
         return getTableInfo(config, type, true);
     }
 
-    public static TableInfo getTableInfo(GlobalConfig config, Class<?> type, boolean loadIfNotExists) {
+    private static TableInfo getTableInfo(GlobalConfig config, Class<?> type, boolean loadIfNotExists) {
         TableInfo tableInfo = TABLE_INFO_CACHE.get(type);
+        // 优先取父类的映射信息
+        if(tableInfo == null && !type.getSuperclass().equals(Object.class)) {
+            tableInfo = getTableInfo(type.getSuperclass());
+        }
         if(tableInfo == null && loadIfNotExists) {
             synchronized (MetadataHelper.class) {
                 tableInfo = TABLE_INFO_CACHE.get(type);
@@ -161,8 +164,10 @@ public class MetadataHelper {
             columnInfo.setSelect(true);
             columnInfo.setInsert(true);
             columnInfo.setUpdate(true);
+            //默认为null则不插入
             columnInfo.setIfNullInsert(false);
-            columnInfo.setIfNullUpdate(true);
+            //默认为null则不修改
+            columnInfo.setIfNullUpdate(false);
             columnInfo.setTypeHandler(UnknownTypeHandler.class);
             return columnInfo;
         }

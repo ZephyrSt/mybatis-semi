@@ -32,9 +32,9 @@ public class UpdateById extends AbstractInjectMethod {
         for (ColumnInfo column : tableInfo.getColumns()) {
             if(!column.isPK()&&column.isUpdate()) {
                 if(column.isIfNullUpdate()) {
-                    setScript.append("<if test=\"").append(column.getFieldName()).append(" != null\">`").append(column.getColumnName()).append("` = #{").append(column.getFieldName()).append("},</if>");
+                    setScript.append(column.getColumnName()).append("=#{").append(column.getFieldName()).append("}, ");
                 }else {
-                    setScript.append(column.getColumnName()).append("` = #{").append(column.getFieldName()).append("},");
+                    setScript.append("<if test=\"").append(column.getFieldName()).append(" != null\">").append(column.getColumnName()).append("=#{").append(column.getFieldName()).append("}, </if>");
                 }
             }
         }
