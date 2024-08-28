@@ -26,20 +26,12 @@ public class MetadataHelper {
      */
     private static final Map<Class<?>, TableInfo> TABLE_INFO_CACHE = new ConcurrentHashMap<>();
 
-    /**
-     * 储存表名对应的反射类表信息
-     */
-    private static final Map<String, TableInfo> TABLE_NAME_INFO_CACHE = new ConcurrentHashMap<>();
 
     public static TableInfo getTableInfo(Class<?> type) {
         return getTableInfo(null, type, false);
     }
 
-    public static TableInfo getTableInfo(GlobalConfig config, Class<?> type) {
-        return getTableInfo(config, type, true);
-    }
-
-    private static TableInfo getTableInfo(GlobalConfig config, Class<?> type, boolean loadIfNotExists) {
+    public static TableInfo getTableInfo(GlobalConfig config, Class<?> type, boolean loadIfNotExists) {
         TableInfo tableInfo = TABLE_INFO_CACHE.get(type);
         // 优先取父类的映射信息
         if(tableInfo == null && !type.getSuperclass().equals(Object.class)) {
@@ -51,7 +43,6 @@ public class MetadataHelper {
                 if(tableInfo == null) {
                     tableInfo = parseTableInfo(config, type);
                     TABLE_INFO_CACHE.put(type, tableInfo);
-                    TABLE_NAME_INFO_CACHE.put(tableInfo.getTableName(), tableInfo);
                 }
             }
         }

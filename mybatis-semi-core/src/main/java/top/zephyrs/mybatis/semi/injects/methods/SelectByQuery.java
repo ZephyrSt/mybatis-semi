@@ -34,7 +34,7 @@ public class SelectByQuery extends AbstractInjectMethod {
                                      Class<?> mapperClass, Class<?> beanClass, Method method,
                                      Class<?> parameterTypeClass,
                                      LanguageDriver languageDriver) {
-        TableInfo tableInfo = MetadataHelper.getTableInfo(configuration.getGlobalConfig(), beanClass);
+        TableInfo tableInfo = MetadataHelper.getTableInfo(configuration.getGlobalConfig(), beanClass, true);
         return (Object parameterObject) -> {
             Class<?> queryType;
             if (parameterObject instanceof Map) {

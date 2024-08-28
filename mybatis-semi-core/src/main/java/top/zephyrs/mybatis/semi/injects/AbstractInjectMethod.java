@@ -46,7 +46,7 @@ public abstract class AbstractInjectMethod implements InjectMethod {
                                      Class<?> parameterTypeClass,
                                      LanguageDriver languageDriver) {
 
-        TableInfo tableInfo = MetadataHelper.getTableInfo(configuration.getGlobalConfig(), beanClass);
+        TableInfo tableInfo = MetadataHelper.getTableInfo(configuration.getGlobalConfig(), beanClass, true);
         if (tableInfo == null) {
             return null;
         }
