@@ -3,6 +3,7 @@ package top.zephyrs.mybatis.semi.plugins.sensitive;
 import top.zephyrs.mybatis.semi.annotations.Sensitive;
 import top.zephyrs.mybatis.semi.config.SensitiveConfig;
 import top.zephyrs.mybatis.semi.metadata.MetadataHelper;
+import top.zephyrs.mybatis.semi.metadata.ReflectionUtils;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
@@ -46,7 +47,7 @@ public class SensitiveHelper {
                     Map<Field, ISensitive> sensitiveMap = new HashMap<>();
                     Set<Field> ignoreDecryptFieldSet = new HashSet<>();
                     for (Field field : needSensitiveFields) {
-                        field.setAccessible(true);
+                        ReflectionUtils.makeAccessible(field);
                         Sensitive annotation = field.getAnnotation(Sensitive.class);
                         if(annotation == null) {
                             continue;
@@ -76,7 +77,7 @@ public class SensitiveHelper {
     }
 
     private static List<Field> getNeedSensitiveFields(Class<?> type){
-        return MetadataHelper.getAllFields(type).stream().filter(field -> field.getAnnotation(Sensitive.class) != null).collect(Collectors.toList());
+        return ReflectionUtils.getAllFields(type).stream().filter(field -> field.getAnnotation(Sensitive.class) != null).collect(Collectors.toList());
     }
 
     public static class SensitiveBean {

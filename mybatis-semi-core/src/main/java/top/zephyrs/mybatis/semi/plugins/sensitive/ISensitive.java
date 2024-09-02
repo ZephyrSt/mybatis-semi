@@ -9,7 +9,7 @@ public interface ISensitive {
      * 保存时的加密方法
      * @param bean bean
      * @param original 原文
-     * @return
+     * @return 加密后的字符串
      */
     String encrypt(Object bean, String original);
 
