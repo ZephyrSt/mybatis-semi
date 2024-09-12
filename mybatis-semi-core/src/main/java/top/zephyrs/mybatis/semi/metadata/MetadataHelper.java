@@ -70,6 +70,9 @@ public class MetadataHelper {
                 tableInfo.setPkColumn(column);
                 break;
             }
+            if(column.getTypeHandler() != null && column.getTypeHandler() != UnknownTypeHandler.class) {
+                tableInfo.setUseResultMap(true);
+            }
         }
         LogicDeleteConfig logicCfg = config.getLogic();
         ColumnInfo logicDeleteColumn = columns.stream().filter(columnInfo -> columnInfo.getField().getAnnotation(LogicDelete.class)!= null).findFirst().orElse(null);

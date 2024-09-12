@@ -1,5 +1,6 @@
 package top.zephyrs.mybatis.semi.injects.methods;
 
+import org.apache.ibatis.type.UnknownTypeHandler;
 import top.zephyrs.mybatis.semi.SemiMybatisConfiguration;
 import top.zephyrs.mybatis.semi.injects.AbstractInjectMethod;
 import top.zephyrs.mybatis.semi.metadata.ColumnInfo;
@@ -11,6 +12,9 @@ import org.apache.ibatis.executor.keygen.KeyGenerator;
 import org.apache.ibatis.executor.keygen.NoKeyGenerator;
 import org.apache.ibatis.mapping.*;
 import org.apache.ibatis.scripting.LanguageDriver;
+
+import java.util.ArrayList;
+import java.util.List;
 
 public class Insert extends AbstractInjectMethod {
 
@@ -57,26 +61,39 @@ public class Insert extends AbstractInjectMethod {
                                  Class<?> beanClass, Class<?> parameterTypeClass,
                                  TableInfo tableInfo) {
 
+//        List<String> columnScripts = new ArrayList<>();
+//        List<String> paramScripts = new ArrayList<>();
         StringBuilder columnScript = new StringBuilder("<trim prefix=\"(\" suffix=\")\" suffixOverrides=\",\">");
-        StringBuilder parameterScript = new StringBuilder("<trim prefix=\"(\" suffix=\")\" suffixOverrides=\",\">");
+        StringBuilder paramScript = new StringBuilder("<trim prefix=\"(\" suffix=\")\" suffixOverrides=\",\">");
         for (ColumnInfo column : tableInfo.getColumns()) {
             if(column.isPK() && column.getIdType()== IdType.AUTO) {
                 continue;
             }
             if (column.isExists() && column.isInsert()) {
                 if(column.isIfNullInsert()) {
-                    columnScript.append(column.getColumnName());
-                    parameterScript.append(column.getFieldName());
+                    columnScript.append(column.getColumnName()).append(",");
+                    if(column.getTypeHandler() == null || column.getTypeHandler().equals(UnknownTypeHandler.class)) {
+                        paramScript.append("#{"+column.getFieldName()+"},");
+                    }else {
+                        paramScript.append("#{"+column.getFieldName()+", typeHandler=" + column.getTypeHandler().getTypeName()+"},");
+                    }
                 } else {
-                    columnScript.append("<if test=\"").append(column.getFieldName()).append(" != null\">`").append(column.getColumnName()).append("`,</if>");
-                    parameterScript.append("<if test=\"").append(column.getFieldName()).append(" != null\">#{").append(column.getFieldName()).append("},</if>");
+                    columnScript.append("<if test=\""+column.getFieldName()+"!=null\">"+column.getColumnName()+",</if>");
+                    if(column.getTypeHandler() == null || column.getTypeHandler().equals(UnknownTypeHandler.class)) {
+                        paramScript.append("<if test=\""+column.getFieldName()+"!=null\">#{"+column.getFieldName()+"},</if>");
+                    }else {
+                        paramScript.append("<if test=\""+column.getFieldName()+"!=null\">#{"+column.getFieldName()+", typeHandler=" + column.getTypeHandler().getTypeName()+"},</if>");
+                    }
                 }
             }
         }
         columnScript.append("</trim>");
-        parameterScript.append("</trim>");
+        paramScript.append("</trim>");
         String sqlTmpl = "<script>INSERT INTO %s %s VALUES %s</script>";
-        return String.format(sqlTmpl, tableInfo.getTableName(), columnScript, parameterScript);
+        return String.format(sqlTmpl,
+                tableInfo.getTableName(),
+                columnScript,
+                paramScript);
     }
 
 }

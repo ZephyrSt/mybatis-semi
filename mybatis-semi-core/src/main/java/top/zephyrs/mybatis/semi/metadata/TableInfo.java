@@ -41,6 +41,11 @@ public class TableInfo {
     private ColumnInfo pkColumn;
 
     /**
+     * 是否使用ResultMap
+     */
+    private boolean useResultMap;
+
+    /**
      * 包含的列
      */
     private List<ColumnInfo> columns;
@@ -139,6 +144,14 @@ public class TableInfo {
 
     public void setDisabledValue(String disabledValue) {
         this.disabledValue = disabledValue;
+    }
+
+    public boolean isUseResultMap() {
+        return useResultMap;
+    }
+
+    public void setUseResultMap(boolean useResultMap) {
+        this.useResultMap = useResultMap;
     }
 }
 

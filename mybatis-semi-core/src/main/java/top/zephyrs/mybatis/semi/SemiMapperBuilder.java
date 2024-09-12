@@ -15,18 +15,10 @@
  */
 package top.zephyrs.mybatis.semi;
 
-import top.zephyrs.mybatis.semi.base.IMapper;
-import top.zephyrs.mybatis.semi.config.SensitiveConfig;
-import top.zephyrs.mybatis.semi.annotations.DatabaseId;
-import top.zephyrs.mybatis.semi.annotations.SensitiveDecrypt;
-import top.zephyrs.mybatis.semi.injects.InjectMethod;
-import top.zephyrs.mybatis.semi.metadata.TableInfo;
-import top.zephyrs.mybatis.semi.metadata.MetadataHelper;
 import org.apache.ibatis.annotations.*;
 import org.apache.ibatis.annotations.ResultMap;
 import org.apache.ibatis.annotations.Options.FlushCachePolicy;
 import org.apache.ibatis.binding.MapperMethod.ParamMap;
-import org.apache.ibatis.builder.BuilderException;
 import org.apache.ibatis.builder.IncompleteElementException;
 import org.apache.ibatis.builder.MapperBuilderAssistant;
 import org.apache.ibatis.builder.annotation.MethodResolver;
@@ -40,9 +32,15 @@ import org.apache.ibatis.reflection.TypeParameterResolver;
 import org.apache.ibatis.scripting.LanguageDriver;
 import org.apache.ibatis.session.ResultHandler;
 import org.apache.ibatis.session.RowBounds;
-import org.apache.ibatis.type.JdbcType;
-import org.apache.ibatis.type.TypeHandler;
 import org.apache.ibatis.type.UnknownTypeHandler;
+import top.zephyrs.mybatis.semi.annotations.DatabaseId;
+import top.zephyrs.mybatis.semi.annotations.SensitiveDecrypt;
+import top.zephyrs.mybatis.semi.base.IMapper;
+import top.zephyrs.mybatis.semi.config.SensitiveConfig;
+import top.zephyrs.mybatis.semi.injects.InjectMethod;
+import top.zephyrs.mybatis.semi.metadata.ColumnInfo;
+import top.zephyrs.mybatis.semi.metadata.MetadataHelper;
+import top.zephyrs.mybatis.semi.metadata.TableInfo;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.*;
@@ -50,6 +48,7 @@ import java.util.*;
 
 /**
  * 通用Mapper方法构建
+ *
  * @author zephyrs
  */
 public class SemiMapperBuilder {
@@ -76,10 +75,10 @@ public class SemiMapperBuilder {
 
             //敏感字段加解密功能
             SensitiveConfig sensitiveCfg = configuration.getGlobalConfig().getSensitive();
-            if(sensitiveCfg != null && sensitiveCfg.isOpen()) {
-                if(!sensitiveCfg.isDefaultDecrypt()) {
+            if (sensitiveCfg != null && sensitiveCfg.isOpen()) {
+                if (!sensitiveCfg.isDefaultDecrypt()) {
                     SensitiveDecrypt decrypt = method.getAnnotation(SensitiveDecrypt.class);
-                    if(decrypt != null) {
+                    if (decrypt != null) {
                         configuration.addSensitiveMappedStatementIds(mappedStatementId);
                     }
                 }
@@ -87,18 +86,29 @@ public class SemiMapperBuilder {
 
             String mappedProcessorId = method.getName();
             InjectMethod processor = configuration.getInjectMethod(mappedProcessorId);
-            if(processor == null) {
+            if (processor == null) {
                 continue;
             }
 
-            if(configuration.hasStatement(mappedStatementId, false)) {
+            if (configuration.hasStatement(mappedStatementId, false)) {
                 continue;
+            }
+
+            //代理的类
+            Class<?> beanClass = getBeanType(type);
+            if (beanClass == null) {
+                return;
+            }
+
+            TableInfo tableInfo = MetadataHelper.getTableInfo(configuration.getGlobalConfig(), beanClass, true);
+            if (tableInfo == null) {
+                return;
             }
             // 自定义的结果集解析
             if (method.getAnnotation(ResultMap.class) == null) {
-                parseResultMap(method);
+                parseResultMap(method, beanClass, tableInfo);
             }
-            parseStatement(method, processor);
+            parseStatement(method, processor, beanClass, tableInfo);
         }
         parsePendingMethods();
     }
@@ -122,13 +132,10 @@ public class SemiMapperBuilder {
         }
     }
 
-    private String parseResultMap(Method method) {
+    private String parseResultMap(Method method, Class<?> beanClass, TableInfo tableInfo) {
         Class<?> returnType = getReturnType(method, type);
-        Arg[] args = method.getAnnotationsByType(Arg.class);
-        Result[] results = method.getAnnotationsByType(Result.class);
-        TypeDiscriminator typeDiscriminator = method.getAnnotation(TypeDiscriminator.class);
         String resultMapId = generateResultMapName(method);
-        applyResultMap(resultMapId, returnType, args, results, typeDiscriminator);
+        applyResultMap(resultMapId, returnType, tableInfo);
         return resultMapId;
     }
 
@@ -148,71 +155,38 @@ public class SemiMapperBuilder {
         return type.getName() + "." + method.getName() + suffix;
     }
 
-    private void applyResultMap(String resultMapId, Class<?> returnType, Arg[] args, Result[] results,
-                                TypeDiscriminator discriminator) {
-        if(configuration.hasResultMap(resultMapId)) {
+    private void applyResultMap(String resultMapId, Class<?> returnType, TableInfo tableInfo) {
+        if (configuration.hasResultMap(resultMapId)) {
             return;
         }
         List<ResultMapping> resultMappings = new ArrayList<>();
-        applyConstructorArgs(args, returnType, resultMappings);
-        applyResults(results, returnType, resultMappings);
-        Discriminator disc = applyDiscriminator(resultMapId, returnType, discriminator);
-        // TODO add AutoMappingBehaviour
-        assistant.addResultMap(resultMapId, returnType, null, disc, resultMappings, null);
-        createDiscriminatorResultMaps(resultMapId, returnType, discriminator);
-    }
+        if (returnType.isAssignableFrom(tableInfo.getType())) {
 
-    private void createDiscriminatorResultMaps(String resultMapId, Class<?> resultType, TypeDiscriminator discriminator) {
-        if (discriminator != null) {
-            for (Case c : discriminator.cases()) {
-                String caseResultMapId = resultMapId + "-" + c.value();
-                List<ResultMapping> resultMappings = new ArrayList<>();
-                // issue #136
-                applyConstructorArgs(c.constructArgs(), resultType, resultMappings);
-                applyResults(c.results(), resultType, resultMappings);
-                // TODO add AutoMappingBehaviour
-                assistant.addResultMap(caseResultMapId, c.type(), resultMapId, null, resultMappings, null);
+            for (ColumnInfo columnInfo : tableInfo.getColumns()) {
+                if (columnInfo.getTypeHandler() != null && columnInfo.getTypeHandler() != UnknownTypeHandler.class) {
+
+                    List<ResultFlag> flags = new ArrayList<>();
+                    if (columnInfo.isPK()) {
+                        flags.add(ResultFlag.ID);
+                    }
+                    ResultMapping resultMapping = assistant.buildResultMapping(returnType, columnInfo.getFieldName(), columnInfo.getColumnName(),
+                            columnInfo.getFieldType(), null, null, null, null, null,
+                            columnInfo.getTypeHandler(), flags, null, null, isLazy());
+                    resultMappings.add(resultMapping);
+                }
             }
         }
+        assistant.addResultMap(resultMapId, returnType, null, null, resultMappings, null);
     }
 
-    private Discriminator applyDiscriminator(String resultMapId, Class<?> resultType, TypeDiscriminator discriminator) {
-        if (discriminator != null) {
-            String column = discriminator.column();
-            Class<?> javaType = discriminator.javaType() == void.class ? String.class : discriminator.javaType();
-            JdbcType jdbcType = discriminator.jdbcType() == JdbcType.UNDEFINED ? null : discriminator.jdbcType();
-            @SuppressWarnings("unchecked")
-            Class<? extends TypeHandler<?>> typeHandler = (Class<? extends TypeHandler<?>>) (discriminator
-                    .typeHandler() == UnknownTypeHandler.class ? null : discriminator.typeHandler());
-            Case[] cases = discriminator.cases();
-            Map<String, String> discriminatorMap = new HashMap<>();
-            for (Case c : cases) {
-                String value = c.value();
-                String caseResultMapId = resultMapId + "-" + value;
-                discriminatorMap.put(value, caseResultMapId);
-            }
-            return assistant.buildDiscriminator(resultType, column, javaType, jdbcType, typeHandler, discriminatorMap);
-        }
-        return null;
-    }
 
-    void parseStatement(Method method, InjectMethod processor) {
+    void parseStatement(Method method, InjectMethod processor, Class<?> beanClass, TableInfo tableInfo) {
         Class<?> parameterTypeClass = getParameterType(method);
         LanguageDriver languageDriver = getLanguageDriver(method);
         String mappedStatementId = type.getName() + "." + method.getName();
 
-        //代理的类
-        Class<?> beanClass = getBeanType(type);
-        if(beanClass == null) {
-            return;
-        }
-
-        TableInfo tableInfo = MetadataHelper.getTableInfo(configuration.getGlobalConfig(), beanClass, true);
-        if(tableInfo == null) {
-            return;
-        }
         SqlSource sqlSource = processor.createSqlSource(configuration, type, beanClass, method, parameterTypeClass, languageDriver);
-        if(sqlSource == null) {
+        if (sqlSource == null) {
             return;
         }
 
@@ -226,19 +200,19 @@ public class SemiMapperBuilder {
         boolean flushCache = !isSelect;
         boolean useCache = isSelect;
 
-        Integer fetchSize =null;
+        Integer fetchSize = null;
         Integer timeout = null;
         StatementType statementType = StatementType.PREPARED;
 
-        if(options != null){
-            databaseId = options.databaseId()== null? "": options.databaseId();
+        if (options != null) {
+            databaseId = options.databaseId() == null ? "" : options.databaseId();
             statementType = options.statementType();
             fetchSize = options.fetchSize() > -1 || options.fetchSize() == Integer.MIN_VALUE ? options.fetchSize() : null;
             timeout = options.timeout() > -1 ? options.timeout() : null;
             if (options.resultSetType() != ResultSetType.DEFAULT) {
                 resultSetType = options.resultSetType();
             }
-            if(!options.useCache()) {
+            if (!options.useCache()) {
                 useCache = false;
             }
             if (FlushCachePolicy.TRUE.equals(options.flushCache())) {
@@ -249,10 +223,10 @@ public class SemiMapperBuilder {
         }
 
         DatabaseId databaseIdAnnotation = method.getAnnotation(DatabaseId.class);
-        if(databaseIdAnnotation == null) {
+        if (databaseIdAnnotation == null) {
             databaseIdAnnotation = type.getAnnotation(DatabaseId.class);
         }
-        if(databaseIdAnnotation != null) {
+        if (databaseIdAnnotation != null) {
             databaseId = databaseIdAnnotation.value();
         }
 
@@ -268,7 +242,7 @@ public class SemiMapperBuilder {
         processor.addMappedStatement(tableInfo, assistant,
                 mappedStatementId, sqlSource, statementType, sqlCommandType, fetchSize, timeout,
                 null, parameterTypeClass, resultMapId, getReturnType(method, type), resultSetType, flushCache, useCache,
-                false, NoKeyGenerator.INSTANCE, null,  null, databaseId, languageDriver,
+                false, NoKeyGenerator.INSTANCE, null, null, databaseId, languageDriver,
                 options != null ? nullOrEmpty(options.resultSets()) : null, processor.isDirtySelect());
     }
 
@@ -355,97 +329,10 @@ public class SemiMapperBuilder {
         return returnType;
     }
 
-    private void applyResults(Result[] results, Class<?> resultType, List<ResultMapping> resultMappings) {
-        for (Result result : results) {
-            List<ResultFlag> flags = new ArrayList<>();
-            if (result.id()) {
-                flags.add(ResultFlag.ID);
-            }
-            @SuppressWarnings("unchecked")
-            Class<? extends TypeHandler<?>> typeHandler = (Class<? extends TypeHandler<?>>) (result
-                    .typeHandler() == UnknownTypeHandler.class ? null : result.typeHandler());
-            boolean hasNestedResultMap = hasNestedResultMap(result);
-            ResultMapping resultMapping = assistant.buildResultMapping(resultType, nullOrEmpty(result.property()),
-                    nullOrEmpty(result.column()), result.javaType() == void.class ? null : result.javaType(),
-                    result.jdbcType() == JdbcType.UNDEFINED ? null : result.jdbcType(),
-                    hasNestedSelect(result) ? nestedSelectId(result) : null,
-                    hasNestedResultMap ? nestedResultMapId(result) : null, null,
-                    hasNestedResultMap ? findColumnPrefix(result) : null, typeHandler, flags, null, null, isLazy(result));
-            resultMappings.add(resultMapping);
-        }
+    private boolean isLazy() {
+        return configuration.isLazyLoadingEnabled();
     }
 
-    private String findColumnPrefix(Result result) {
-        String columnPrefix = result.one().columnPrefix();
-        if (columnPrefix.length() < 1) {
-            columnPrefix = result.many().columnPrefix();
-        }
-        return columnPrefix;
-    }
-
-    private String nestedResultMapId(Result result) {
-        String resultMapId = result.one().resultMap();
-        if (resultMapId.length() < 1) {
-            resultMapId = result.many().resultMap();
-        }
-        if (!resultMapId.contains(".")) {
-            resultMapId = type.getName() + "." + resultMapId;
-        }
-        return resultMapId;
-    }
-
-    private boolean hasNestedResultMap(Result result) {
-        if (result.one().resultMap().length() > 0 && result.many().resultMap().length() > 0) {
-            throw new BuilderException("Cannot use both @One and @Many annotations in the same @Result");
-        }
-        return result.one().resultMap().length() > 0 || result.many().resultMap().length() > 0;
-    }
-
-    private String nestedSelectId(Result result) {
-        String nestedSelect = result.one().select();
-        if (nestedSelect.length() < 1) {
-            nestedSelect = result.many().select();
-        }
-        if (!nestedSelect.contains(".")) {
-            nestedSelect = type.getName() + "." + nestedSelect;
-        }
-        return nestedSelect;
-    }
-
-    private boolean isLazy(Result result) {
-        boolean isLazy = configuration.isLazyLoadingEnabled();
-        if (result.one().select().length() > 0 && FetchType.DEFAULT != result.one().fetchType()) {
-            isLazy = result.one().fetchType() == FetchType.LAZY;
-        } else if (result.many().select().length() > 0 && FetchType.DEFAULT != result.many().fetchType()) {
-            isLazy = result.many().fetchType() == FetchType.LAZY;
-        }
-        return isLazy;
-    }
-
-    private boolean hasNestedSelect(Result result) {
-        if (result.one().select().length() > 0 && result.many().select().length() > 0) {
-            throw new BuilderException("Cannot use both @One and @Many annotations in the same @Result");
-        }
-        return result.one().select().length() > 0 || result.many().select().length() > 0;
-    }
-
-    private void applyConstructorArgs(Arg[] args, Class<?> resultType, List<ResultMapping> resultMappings) {
-        for (Arg arg : args) {
-            List<ResultFlag> flags = new ArrayList<>();
-            flags.add(ResultFlag.CONSTRUCTOR);
-            if (arg.id()) {
-                flags.add(ResultFlag.ID);
-            }
-            @SuppressWarnings("unchecked")
-            Class<? extends TypeHandler<?>> typeHandler = (Class<? extends TypeHandler<?>>) (arg
-                    .typeHandler() == UnknownTypeHandler.class ? null : arg.typeHandler());
-            ResultMapping resultMapping = assistant.buildResultMapping(resultType, nullOrEmpty(arg.name()),
-                    nullOrEmpty(arg.column()), arg.javaType() == void.class ? null : arg.javaType(),
-                    arg.jdbcType() == JdbcType.UNDEFINED ? null : arg.jdbcType(), nullOrEmpty(arg.select()),
-                    nullOrEmpty(arg.resultMap()), null, nullOrEmpty(arg.columnPrefix()), typeHandler, flags, null, null, false);
-            resultMappings.add(resultMapping);
-        }
-    }
 
     private String nullOrEmpty(String value) {
         return value == null || value.trim().length() == 0 ? null : value;
@@ -510,15 +397,16 @@ public class SemiMapperBuilder {
 
     /**
      * 通过反射,获得定义Class时声明的父类的范型参数的类型.
+     *
      * @param mapperClass mapper类型
      * @return mapper支持的类型（泛型）
      */
     protected Class<?> getBeanType(Class<?> mapperClass) {
-        if(!IMapper.class.isAssignableFrom(type)) {
+        if (!IMapper.class.isAssignableFrom(type)) {
             return null;
         }
-        for(Type type: mapperClass.getGenericInterfaces()) {
-            if(!(type instanceof ParameterizedType)) {
+        for (Type type : mapperClass.getGenericInterfaces()) {
+            if (!(type instanceof ParameterizedType)) {
                 continue;
             }
             Type[] params = ((ParameterizedType) type).getActualTypeArguments();

@@ -1,5 +1,6 @@
 package top.zephyrs.mybatis.semi.injects.methods;
 
+import org.apache.ibatis.type.UnknownTypeHandler;
 import top.zephyrs.mybatis.semi.SemiMybatisConfiguration;
 import top.zephyrs.mybatis.semi.injects.AbstractInjectMethod;
 import top.zephyrs.mybatis.semi.metadata.ColumnInfo;
@@ -32,9 +33,25 @@ public class UpdateById extends AbstractInjectMethod {
         for (ColumnInfo column : tableInfo.getColumns()) {
             if(!column.isPK()&&column.isUpdate()) {
                 if(column.isIfNullUpdate()) {
-                    setScript.append(column.getColumnName()).append("=#{").append(column.getFieldName()).append("}, ");
+                    if(column.getTypeHandler() == null || column.getTypeHandler().equals(UnknownTypeHandler.class)) {
+                        setScript.append(column.getColumnName()).append("=#{").append(column.getFieldName())
+                                .append("}, ");
+                    }else {
+                        setScript.append(column.getColumnName()).append("=#{").append(column.getFieldName())
+                                .append(", typeHandler=").append(column.getTypeHandler().getTypeName())
+                                .append("}, ");
+                    }
                 }else {
-                    setScript.append("<if test=\"").append(column.getFieldName()).append(" != null\">").append(column.getColumnName()).append("=#{").append(column.getFieldName()).append("}, </if>");
+                    if(column.getTypeHandler() == null || column.getTypeHandler().equals(UnknownTypeHandler.class)) {
+                        setScript.append("<if test=\"").append(column.getFieldName()).append(" != null\">")
+                                .append(column.getColumnName()).append("=#{").append(column.getFieldName())
+                                .append("}, </if>");
+                    }else {
+                        setScript.append("<if test=\"").append(column.getFieldName()).append(" != null\">")
+                                .append(column.getColumnName()).append("=#{").append(column.getFieldName())
+                                .append(", typeHandler=").append(column.getTypeHandler().getTypeName())
+                                .append("}, </if>");
+                    }
                 }
             }
         }

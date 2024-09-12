@@ -1,10 +1,14 @@
 package top.zephyrs.mybatis.semi.metadata;
 
+import top.zephyrs.mybatis.semi.base.IMapper;
+
 import java.beans.BeanInfo;
 import java.beans.Introspector;
 import java.beans.PropertyDescriptor;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
+import java.lang.reflect.ParameterizedType;
+import java.lang.reflect.Type;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -59,4 +63,6 @@ public class ReflectionUtils {
         }
 
     }
+
+
 }
