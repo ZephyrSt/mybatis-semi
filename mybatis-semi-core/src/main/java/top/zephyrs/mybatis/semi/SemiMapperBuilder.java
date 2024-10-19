@@ -55,10 +55,11 @@ public class SemiMapperBuilder {
 
     private final SemiMybatisConfiguration configuration;
     private final MapperBuilderAssistant assistant;
+    //Mapper类
     private final Class<?> type;
 
     public SemiMapperBuilder(SemiMybatisConfiguration configuration, Class<?> type) {
-        String resource = type.getName().replace('.', '/') + ".java (best guess)";
+        String resource = type.getName().replace('.', '/') + ".java (semi)";
         this.assistant = new MapperBuilderAssistant(configuration, resource);
         this.configuration = configuration;
         this.type = type;
@@ -74,6 +75,7 @@ public class SemiMapperBuilder {
             String mappedStatementId = type.getName() + "." + method.getName();
 
             //敏感字段加解密功能
+            //判断 mappedStatement 是否需要解密，需要则登记到 configuration
             SensitiveConfig sensitiveCfg = configuration.getGlobalConfig().getSensitive();
             if (sensitiveCfg != null && sensitiveCfg.isOpen()) {
                 if (!sensitiveCfg.isDefaultDecrypt()) {
@@ -84,13 +86,15 @@ public class SemiMapperBuilder {
                 }
             }
 
-            String mappedProcessorId = method.getName();
-            InjectMethod processor = configuration.getInjectMethod(mappedProcessorId);
-            if (processor == null) {
+            //mappedStatement 已经存在则跳过
+            if (configuration.hasStatement(mappedStatementId, false)) {
                 continue;
             }
 
-            if (configuration.hasStatement(mappedStatementId, false)) {
+            //获取通用的自动代理的方法
+            String mappedProcessorId = method.getName();
+            InjectMethod processor = configuration.getInjectMethod(mappedProcessorId);
+            if (processor == null) {
                 continue;
             }
 
@@ -99,7 +103,7 @@ public class SemiMapperBuilder {
             if (beanClass == null) {
                 return;
             }
-
+            //获取对应的表信息
             TableInfo tableInfo = MetadataHelper.getTableInfo(configuration.getGlobalConfig(), beanClass, true);
             if (tableInfo == null) {
                 return;
@@ -108,7 +112,7 @@ public class SemiMapperBuilder {
             if (method.getAnnotation(ResultMap.class) == null) {
                 parseResultMap(method, beanClass, tableInfo);
             }
-            parseStatement(method, processor, beanClass, tableInfo);
+            parseStatement(mappedStatementId, method, processor, beanClass, tableInfo);
         }
         parsePendingMethods();
     }
@@ -180,10 +184,10 @@ public class SemiMapperBuilder {
     }
 
 
-    void parseStatement(Method method, InjectMethod processor, Class<?> beanClass, TableInfo tableInfo) {
+    void parseStatement(String mappedStatementId, Method method, InjectMethod processor, Class<?> beanClass, TableInfo tableInfo) {
+
         Class<?> parameterTypeClass = getParameterType(method);
         LanguageDriver languageDriver = getLanguageDriver(method);
-        String mappedStatementId = type.getName() + "." + method.getName();
 
         SqlSource sqlSource = processor.createSqlSource(configuration, type, beanClass, method, parameterTypeClass, languageDriver);
         if (sqlSource == null) {

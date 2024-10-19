@@ -7,6 +7,8 @@ import top.zephyrs.mybatis.semi.injects.methods.*;
  */
 public class DefaultInjectProcessor extends InjectProcessor {
 
+    protected boolean isLoaded = false;
+
     @Override
     public void loadMethods() {
         this.addInject(new Insert());
@@ -20,6 +22,14 @@ public class DefaultInjectProcessor extends InjectProcessor {
         this.addInject(new Enable());
         this.addInject(new Disable());
         this.addInject(new ToggleEnable());
+
+        this.isLoaded = true;
     }
+
+    @Override
+    public boolean isLoaded() {
+        return this.isLoaded;
+    }
+
 
 }

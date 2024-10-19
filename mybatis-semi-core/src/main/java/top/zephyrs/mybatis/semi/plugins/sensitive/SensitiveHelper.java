@@ -32,7 +32,7 @@ public class SensitiveHelper {
      */
     public static SensitiveBean getSensitiveBean(SensitiveConfig config, Object obj) throws NoSuchMethodException, InvocationTargetException, InstantiationException, IllegalAccessException {
 
-        if( obj instanceof String || obj instanceof Long || obj instanceof Integer
+        if(obj == null || obj instanceof String || obj instanceof Long || obj instanceof Integer
                 || obj instanceof Short || obj instanceof Boolean || obj instanceof Character
                 || obj instanceof Collection || obj instanceof Map) {
             return null;

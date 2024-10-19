@@ -16,6 +16,8 @@ public abstract class InjectProcessor {
      */
     public abstract void loadMethods();
 
+    public abstract boolean isLoaded();
+
     /**
      * 查询全部通用方法
      * @return InjectMethods

@@ -18,6 +18,7 @@ package top.zephyrs.mybatis.semi.spring.boot.autoconfigure;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.boot.context.properties.NestedConfigurationProperty;
 import org.springframework.boot.context.properties.PropertyMapper;
+import org.springframework.context.annotation.Lazy;
 import top.zephyrs.mybatis.semi.SemiMybatisConfiguration;
 import top.zephyrs.mybatis.semi.config.EnableConfig;
 import top.zephyrs.mybatis.semi.config.KeyGenerateConfig;

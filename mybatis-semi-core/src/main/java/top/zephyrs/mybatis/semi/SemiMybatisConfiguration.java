@@ -26,10 +26,7 @@ import org.apache.ibatis.session.Configuration;
 import org.apache.ibatis.session.ResultHandler;
 import org.apache.ibatis.session.RowBounds;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 /**
  * 扩展的 org.apache.ibatis.session.Configuration
@@ -55,7 +52,7 @@ public class SemiMybatisConfiguration extends Configuration {
     /**
      * 敏感数据加解密工具
      */
-    private final List<String> sensitiveMappedStatementIds = new ArrayList<>();
+    private final Set<String> sensitiveMappedStatementIds = new HashSet<>();
 
     public SemiMybatisConfiguration(Environment environment) {
         super(environment);
@@ -101,12 +98,16 @@ public class SemiMybatisConfiguration extends Configuration {
         this.buildAllProcessorStatements();
     }
 
-    private void buildAllProcessorStatements() {
+    /**
+     * 同步处理解析
+     */
+    private synchronized void buildAllProcessorStatements() {
         // 加载需要代理的公用方法
-        injectProcessor.loadMethods();
+        if(!injectProcessor.isLoaded()) {
+            injectProcessor.loadMethods();
+        }
 
         for(Class<?> type: mapperRegistry.getMappers()) {
-
             boolean loadCompleted = false;
             try {
                 SemiMapperBuilder parse = new SemiMapperBuilder(this, type);
