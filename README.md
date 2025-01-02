@@ -1,6 +1,6 @@
 ### 简单的mybatis脚手架
 
-在mybatis的基础上进行通用功能的提取。
+在mybatis的基础上提供通用的增删改查功能，简化代码的开发
 
 ##### 功能：
 + 通用Mapper
@@ -47,7 +47,7 @@ public interface UserMapper extends BaseMapper<User> {
 ```
 
 
-###### 通过构建 SqlSessionFactory 使用：
+###### 也可以通过构建 SqlSessionFactory 使用：
 ```java
 
 @Configuration
@@ -180,7 +180,7 @@ public class MyInjectProcessor extends InjectProcessor {
     }
 }
 ```
-```
+``` java
 // 这里注册通用方法处理器
 configuration.setInjectProcessor(new MyInjectProcessor());
 ```
