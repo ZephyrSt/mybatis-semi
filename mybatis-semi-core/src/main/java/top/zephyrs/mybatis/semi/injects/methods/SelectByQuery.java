@@ -13,7 +13,9 @@ import top.zephyrs.mybatis.semi.metadata.TableInfo;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 
 public class SelectByQuery extends AbstractInjectMethod {
 
@@ -36,6 +38,19 @@ public class SelectByQuery extends AbstractInjectMethod {
                                      LanguageDriver languageDriver) {
         TableInfo tableInfo = MetadataHelper.getTableInfo(configuration.getGlobalConfig(), beanClass, true);
         return (Object parameterObject) -> {
+            // 查询的列
+            Set<String> needSelectColumns = new HashSet<>();
+            for (ColumnInfo column : tableInfo.getColumns()) {
+                if (column.isSelect()) {
+                    needSelectColumns.add(column.getColumnName());
+                }
+            }
+
+            String columns = String.join(",", needSelectColumns);
+
+            // 查询的条件
+            StringBuilder whereScript = new StringBuilder("<where>");
+            //查询参数类型
             Class<?> queryType;
             if (parameterObject instanceof Map) {
                 Object param = ((Map<?, ?>) parameterObject).get("query");
@@ -43,35 +58,32 @@ public class SelectByQuery extends AbstractInjectMethod {
             } else {
                 queryType = parameterObject.getClass();
             }
-            // 查询的列
-            StringBuilder columnScript = new StringBuilder();
-            for (ColumnInfo column : tableInfo.getColumns()) {
-                if (column.isSelect()) {
-                    columnScript.append(column.getColumnName()).append(", ");
+            if(Map.class.isAssignableFrom(queryType)) {
+                Map<String, ?> param = (Map<String, ?>) ((Map<?, ?>) parameterObject).get("query");
+                for(String key: param.keySet()) {
+                    whereScript.append(equal(key, param.get(key), tableInfo));
+                }
+            }else {
+                Field[] fields = queryType.getDeclaredFields();
+                for (Field field : fields) {
+                    StringBuilder fieldWhere = new StringBuilder();
+                    fieldWhere.append(between(field, tableInfo));
+                    fieldWhere.append(greaterThan(field, tableInfo));
+                    fieldWhere.append(greaterThanOrEqual(field, tableInfo));
+                    fieldWhere.append(lessThan(field, tableInfo));
+                    fieldWhere.append(lessThanOrEqual(field, tableInfo));
+                    fieldWhere.append(like(field, tableInfo));
+                    fieldWhere.append(likeLeft(field, tableInfo));
+                    fieldWhere.append(likeRight(field, tableInfo));
+                    fieldWhere.append(in(field, tableInfo));
+                    // 如果以上注解都没，则是equal
+                    if (fieldWhere.toString().trim().isEmpty()) {
+                        fieldWhere.append(equal(field, tableInfo));
+                    }
+                    whereScript.append(fieldWhere);
                 }
             }
-            String columns = columnScript.substring(0, columnScript.length() - 2);
 
-            // 查询的条件
-            StringBuilder whereScript = new StringBuilder("<where>");
-            Field[] fields = queryType.getDeclaredFields();
-            for (Field field : fields) {
-                StringBuilder fieldWhere = new StringBuilder();
-                fieldWhere.append(between(field, tableInfo));
-                fieldWhere.append(greaterThan(field, tableInfo));
-                fieldWhere.append(greaterThanOrEqual(field, tableInfo));
-                fieldWhere.append(lessThan(field, tableInfo));
-                fieldWhere.append(lessThanOrEqual(field, tableInfo));
-                fieldWhere.append(like(field, tableInfo));
-                fieldWhere.append(likeLeft(field, tableInfo));
-                fieldWhere.append(likeRight(field, tableInfo));
-                fieldWhere.append(in(field, tableInfo));
-                // 如果以上注解都没，则是equal
-                if (fieldWhere.toString().trim().isEmpty()) {
-                    fieldWhere.append(equal(field, tableInfo));
-                }
-                whereScript.append(fieldWhere);
-            }
             // 逻辑删除的要过滤
             if (tableInfo.isLogical()) {
                 whereScript
@@ -98,6 +110,22 @@ public class SelectByQuery extends AbstractInjectMethod {
         return EMPTY_STR;
     }
 
+    private String equal(String fieldName, Object fieldValue, TableInfo tableInfo) {
+        if(fieldValue == null) {
+            return EMPTY_STR;
+        }
+        ColumnInfo column = this.parseSelectColumn(tableInfo, fieldName);
+        if (column == null) {
+            return EMPTY_STR;
+        }
+        if (fieldValue.getClass() == String.class) {
+            String script = "<if test=\"query.%s != null and query.%s != ''\">AND %s=#{query.%s}</if>";
+            return String.format(script, fieldName, fieldName, column.getColumnName(), fieldName);
+        } else {
+            String script = "<if test=\"query.%s != null\">AND %s=#{query.%s}</if>";
+            return String.format(script, fieldName, column.getColumnName(), fieldName);
+        }
+    }
 
     private String equal(Field field, TableInfo tableInfo) {
         Equal equal = field.getAnnotation(Equal.class);
@@ -221,6 +249,11 @@ public class SelectByQuery extends AbstractInjectMethod {
             bindColumn = annotaionValue;
         }
         return MetadataHelper.getColumnByFieldName(tableInfo, bindColumn);
+    }
+
+
+    private ColumnInfo parseSelectColumn(TableInfo tableInfo, String fieldName) {
+        return MetadataHelper.getColumnByFieldName(tableInfo, fieldName);
     }
 
 }
