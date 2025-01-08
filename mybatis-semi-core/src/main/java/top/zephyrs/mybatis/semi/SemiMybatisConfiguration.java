@@ -3,6 +3,7 @@ package top.zephyrs.mybatis.semi;
 
 import top.zephyrs.mybatis.semi.config.GlobalConfig;
 import top.zephyrs.mybatis.semi.config.KeyGenerateConfig;
+import top.zephyrs.mybatis.semi.config.SensitiveConfig;
 import top.zephyrs.mybatis.semi.exceptions.KeyGenerateException;
 import top.zephyrs.mybatis.semi.executor.ParameterHandlerWrapper;
 import top.zephyrs.mybatis.semi.executor.ResultSetHandlerWrapper;
@@ -11,6 +12,7 @@ import top.zephyrs.mybatis.semi.injects.InjectMethod;
 import top.zephyrs.mybatis.semi.injects.InjectProcessor;
 import top.zephyrs.mybatis.semi.plugins.keygenerate.IdType;
 import top.zephyrs.mybatis.semi.plugins.keygenerate.KeyCreator;
+import top.zephyrs.mybatis.semi.plugins.keygenerate.KeyGenerateInterceptor;
 import top.zephyrs.mybatis.semi.plugins.keygenerate.generators.AutoKeyCreator;
 import top.zephyrs.mybatis.semi.plugins.keygenerate.generators.NoneKeyCreator;
 import top.zephyrs.mybatis.semi.plugins.keygenerate.generators.SnowflakeKeyCreator;
@@ -25,6 +27,11 @@ import org.apache.ibatis.mapping.MappedStatement;
 import org.apache.ibatis.session.Configuration;
 import org.apache.ibatis.session.ResultHandler;
 import org.apache.ibatis.session.RowBounds;
+import org.apache.ibatis.logging.Log;
+import org.apache.ibatis.logging.LogFactory;
+
+import top.zephyrs.mybatis.semi.plugins.sensitive.SensitiveDecryptInterceptor;
+import top.zephyrs.mybatis.semi.plugins.sensitive.SensitiveEncryptInterceptor;
 
 import java.util.*;
 
@@ -33,6 +40,8 @@ import java.util.*;
  * 增加通用功能的配置信息。
  */
 public class SemiMybatisConfiguration extends Configuration {
+
+    protected final Log log = LogFactory.getLog(this.getClass());
 
     /**
      * 代理生成mapper方法 sql 的处理器
@@ -115,7 +124,7 @@ public class SemiMybatisConfiguration extends Configuration {
                 loadCompleted = true;
             } finally {
                 if (!loadCompleted) {
-                    // todo 这里直接跳过
+                    log.error("parse mapper failed: "+ type.getName());
                 }
             }
         }

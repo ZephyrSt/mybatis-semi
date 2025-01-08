@@ -32,6 +32,7 @@ import org.apache.ibatis.reflection.TypeParameterResolver;
 import org.apache.ibatis.scripting.LanguageDriver;
 import org.apache.ibatis.session.ResultHandler;
 import org.apache.ibatis.session.RowBounds;
+import org.apache.ibatis.type.TypeHandler;
 import org.apache.ibatis.type.UnknownTypeHandler;
 import top.zephyrs.mybatis.semi.annotations.DatabaseId;
 import top.zephyrs.mybatis.semi.annotations.SensitiveDecrypt;
@@ -40,6 +41,7 @@ import top.zephyrs.mybatis.semi.config.SensitiveConfig;
 import top.zephyrs.mybatis.semi.injects.InjectMethod;
 import top.zephyrs.mybatis.semi.metadata.ColumnInfo;
 import top.zephyrs.mybatis.semi.metadata.MetadataHelper;
+import top.zephyrs.mybatis.semi.metadata.ReflectionUtils;
 import top.zephyrs.mybatis.semi.metadata.TableInfo;
 
 import java.lang.annotation.Annotation;
@@ -88,6 +90,8 @@ public class SemiMapperBuilder {
 
             //mappedStatement 已经存在则跳过
             if (configuration.hasStatement(mappedStatementId, false)) {
+                //判断是否存在ResultMap映射，不存在则替换为默认方式
+                this.injectSemiResultMap(mappedStatementId);
                 continue;
             }
 
@@ -133,6 +137,55 @@ public class SemiMapperBuilder {
                     // This method is still missing a resource
                 }
             }
+        }
+    }
+
+    /**
+     * 替换空的返回对象为包含 @Column注解声明的TypeHandler的类型
+     */
+    private void injectSemiResultMap(String mappedStatementId){
+        MappedStatement ms = configuration.getMappedStatement(mappedStatementId, false);
+        if(ms == null || ms.getSqlCommandType() != SqlCommandType.SELECT) {
+            return;
+        }
+        //已经存在自定义ResultMap则跳过
+        org.apache.ibatis.mapping.ResultMap resultMap = ms.getResultMaps().iterator().next();
+        if (resultMap.getResultMappings() != null && !resultMap.getResultMappings().isEmpty()) {
+            return;
+        }
+        Class<?> returnType = resultMap.getType();
+        if(returnType.isPrimitive()) {
+            return;
+        }
+        org.apache.ibatis.mapping.ResultMap newResultMap = null;
+        String newResultMapId = resultMap.getId()+"-semi-meta";
+        if(configuration.hasResultMap(newResultMapId)) {
+            newResultMap = configuration.getResultMap(newResultMapId);
+        }else {
+            TableInfo metaInfo = MetadataHelper.getTableInfo(configuration.getGlobalConfig(), returnType, true);
+            List<ResultMapping> resultMappings = new ArrayList<>();
+            for (ColumnInfo columnInfo : metaInfo.getColumns()) {
+                if (columnInfo.getTypeHandler() != null && columnInfo.getTypeHandler() != UnknownTypeHandler.class) {
+                    TypeHandler<?> typeHandler = configuration.getTypeHandlerRegistry().getTypeHandler(columnInfo.getFieldType());
+                    if(typeHandler == null || ! (typeHandler.getClass().equals(columnInfo.getTypeHandler()))) {
+                        typeHandler = configuration.getTypeHandlerRegistry().getInstance(columnInfo.getFieldType(), columnInfo.getTypeHandler());
+                    }
+                    ResultMapping resultMapping = new ResultMapping.Builder
+                            (ms.getConfiguration(), columnInfo.getFieldName(),
+                                    columnInfo.getColumnName(), typeHandler).build();
+                    resultMappings.add(resultMapping);
+                }
+            }
+            if (!resultMappings.isEmpty()) {
+                newResultMap = new org.apache.ibatis.mapping.ResultMap.Builder(ms.getConfiguration(), newResultMapId, returnType, resultMappings).build();
+                configuration.addResultMap(newResultMap);
+            }
+
+        }
+        if(newResultMap != null) {
+            Field field = ReflectionUtils.findField(MappedStatement.class, "resultMaps");
+            ReflectionUtils.makeAccessible(field);
+            ReflectionUtils.setField(field, ms, Collections.singletonList(newResultMap));
         }
     }
 

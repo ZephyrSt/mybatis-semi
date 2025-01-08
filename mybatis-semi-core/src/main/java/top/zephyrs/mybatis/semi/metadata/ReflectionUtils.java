@@ -1,6 +1,7 @@
 package top.zephyrs.mybatis.semi.metadata;
 
 import top.zephyrs.mybatis.semi.base.IMapper;
+import top.zephyrs.mybatis.semi.exceptions.ReflectionException;
 
 import java.beans.BeanInfo;
 import java.beans.Introspector;
@@ -64,5 +65,20 @@ public class ReflectionUtils {
 
     }
 
+    public static Field findField(Class<?> clazz, String name) {
+        try {
+            return clazz.getDeclaredField(name);
+        } catch (NoSuchFieldException e) {
+            throw new ReflectionException(e);
+        }
+    }
+
+    public static void setField(Field field, Object target, Object value) {
+        try {
+            field.set(target, value);
+        } catch (IllegalAccessException e) {
+            throw new ReflectionException(e);
+        }
+    }
 
 }

@@ -134,6 +134,7 @@ public class MetadataHelper {
         columnInfo.setField(field);
         columnInfo.setPK(false);
         columnInfo.setFieldName(field.getName());
+        columnInfo.setFieldType(field.getType());
         if(primary != null) {
             columnInfo.setPK(true);
             columnInfo.setIdType(primary.idType());
