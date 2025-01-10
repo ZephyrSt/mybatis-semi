@@ -22,11 +22,8 @@ import org.apache.ibatis.binding.MapperMethod.ParamMap;
 import org.apache.ibatis.builder.IncompleteElementException;
 import org.apache.ibatis.builder.MapperBuilderAssistant;
 import org.apache.ibatis.builder.annotation.MethodResolver;
-import org.apache.ibatis.builder.annotation.ProviderSqlSource;
 import org.apache.ibatis.cursor.Cursor;
-import org.apache.ibatis.executor.keygen.KeyGenerator;
 import org.apache.ibatis.executor.keygen.NoKeyGenerator;
-import org.apache.ibatis.executor.keygen.SelectKeyGenerator;
 import org.apache.ibatis.mapping.*;
 import org.apache.ibatis.reflection.TypeParameterResolver;
 import org.apache.ibatis.scripting.LanguageDriver;
@@ -44,7 +41,6 @@ import top.zephyrs.mybatis.semi.metadata.MetadataHelper;
 import top.zephyrs.mybatis.semi.metadata.ReflectionUtils;
 import top.zephyrs.mybatis.semi.metadata.TableInfo;
 
-import java.lang.annotation.Annotation;
 import java.lang.reflect.*;
 import java.util.*;
 
@@ -114,7 +110,7 @@ public class SemiMapperBuilder {
             }
             // 自定义的结果集解析
             if (method.getAnnotation(ResultMap.class) == null) {
-                parseResultMap(method, beanClass, tableInfo);
+                parseResultMap(method, tableInfo);
             }
             parseStatement(mappedStatementId, method, processor, beanClass, tableInfo);
         }
@@ -143,9 +139,9 @@ public class SemiMapperBuilder {
     /**
      * 替换空的返回对象为包含 @Column注解声明的TypeHandler的类型
      */
-    private void injectSemiResultMap(String mappedStatementId){
+    private void injectSemiResultMap(String mappedStatementId) {
         MappedStatement ms = configuration.getMappedStatement(mappedStatementId, false);
-        if(ms == null || ms.getSqlCommandType() != SqlCommandType.SELECT) {
+        if (ms == null) {
             return;
         }
         //已经存在自定义ResultMap则跳过
@@ -154,22 +150,23 @@ public class SemiMapperBuilder {
             return;
         }
         Class<?> returnType = resultMap.getType();
-        if(returnType.isPrimitive()) {
+        if (returnType.isPrimitive()) {
             return;
         }
         org.apache.ibatis.mapping.ResultMap newResultMap = null;
-        String newResultMapId = resultMap.getId()+"-semi-meta";
-        if(configuration.hasResultMap(newResultMapId)) {
+        String newResultMapId = resultMap.getId() + "-semi-meta";
+        if (configuration.hasResultMap(newResultMapId)) {
             newResultMap = configuration.getResultMap(newResultMapId);
-        }else {
+        } else {
             TableInfo metaInfo = MetadataHelper.getTableInfo(configuration.getGlobalConfig(), returnType, true);
             List<ResultMapping> resultMappings = new ArrayList<>();
             for (ColumnInfo columnInfo : metaInfo.getColumns()) {
                 if (columnInfo.getTypeHandler() != null && columnInfo.getTypeHandler() != UnknownTypeHandler.class) {
-                    TypeHandler<?> typeHandler = configuration.getTypeHandlerRegistry().getTypeHandler(columnInfo.getFieldType());
-                    if(typeHandler == null || ! (typeHandler.getClass().equals(columnInfo.getTypeHandler()))) {
-                        typeHandler = configuration.getTypeHandlerRegistry().getInstance(columnInfo.getFieldType(), columnInfo.getTypeHandler());
-                    }
+
+                    Class<? extends TypeHandler<?>> typeHandlerClazz = columnInfo.getTypeHandler();
+
+
+                    TypeHandler<?> typeHandler = configuration.getTypeHandlerRegistry().getInstance(columnInfo.getFieldType(), typeHandlerClazz);
                     ResultMapping resultMapping = new ResultMapping.Builder
                             (ms.getConfiguration(), columnInfo.getFieldName(),
                                     columnInfo.getColumnName(), typeHandler).build();
@@ -182,14 +179,14 @@ public class SemiMapperBuilder {
             }
 
         }
-        if(newResultMap != null) {
+        if (newResultMap != null) {
             Field field = ReflectionUtils.findField(MappedStatement.class, "resultMaps");
             ReflectionUtils.makeAccessible(field);
             ReflectionUtils.setField(field, ms, Collections.singletonList(newResultMap));
         }
     }
 
-    private String parseResultMap(Method method, Class<?> beanClass, TableInfo tableInfo) {
+    private String parseResultMap(Method method, TableInfo tableInfo) {
         Class<?> returnType = getReturnType(method, type);
         String resultMapId = generateResultMapName(method);
         applyResultMap(resultMapId, returnType, tableInfo);
@@ -226,9 +223,11 @@ public class SemiMapperBuilder {
                     if (columnInfo.isPK()) {
                         flags.add(ResultFlag.ID);
                     }
+                    Class<? extends TypeHandler<?>> typeHandlerClazz = columnInfo.getTypeHandler();
+
                     ResultMapping resultMapping = assistant.buildResultMapping(returnType, columnInfo.getFieldName(), columnInfo.getColumnName(),
                             columnInfo.getFieldType(), null, null, null, null, null,
-                            columnInfo.getTypeHandler(), flags, null, null, isLazy());
+                            typeHandlerClazz, flags, null, null, isLazy());
                     resultMappings.add(resultMapping);
                 }
             }
@@ -392,64 +391,7 @@ public class SemiMapperBuilder {
 
 
     private String nullOrEmpty(String value) {
-        return value == null || value.trim().length() == 0 ? null : value;
-    }
-
-    private KeyGenerator handleSelectKeyAnnotation(SelectKey selectKeyAnnotation, String baseStatementId,
-                                                   Class<?> parameterTypeClass, LanguageDriver languageDriver) {
-        String id = baseStatementId + SelectKeyGenerator.SELECT_KEY_SUFFIX;
-        Class<?> resultTypeClass = selectKeyAnnotation.resultType();
-        StatementType statementType = selectKeyAnnotation.statementType();
-        String keyProperty = selectKeyAnnotation.keyProperty();
-        String keyColumn = selectKeyAnnotation.keyColumn();
-        boolean executeBefore = selectKeyAnnotation.before();
-
-        // defaults
-        boolean useCache = false;
-        KeyGenerator keyGenerator = NoKeyGenerator.INSTANCE;
-        Integer fetchSize = null;
-        Integer timeout = null;
-        boolean flushCache = false;
-        String parameterMap = null;
-        String resultMap = null;
-        ResultSetType resultSetTypeEnum = null;
-        String databaseId = selectKeyAnnotation.databaseId().isEmpty() ? null : selectKeyAnnotation.databaseId();
-
-        SqlSource sqlSource = buildSqlSource(selectKeyAnnotation, parameterTypeClass, languageDriver, null);
-        SqlCommandType sqlCommandType = SqlCommandType.SELECT;
-
-        assistant.addMappedStatement(id, sqlSource, statementType, sqlCommandType, fetchSize, timeout, parameterMap,
-                parameterTypeClass, resultMap, resultTypeClass, resultSetTypeEnum, flushCache, useCache, false, keyGenerator,
-                keyProperty, keyColumn, databaseId, languageDriver, null, false);
-
-        id = assistant.applyCurrentNamespace(id, false);
-
-        MappedStatement keyStatement = configuration.getMappedStatement(id, false);
-        SelectKeyGenerator answer = new SelectKeyGenerator(keyStatement, executeBefore);
-        configuration.addKeyGenerator(id, answer);
-        return answer;
-    }
-
-    private SqlSource buildSqlSource(Annotation annotation, Class<?> parameterType, LanguageDriver languageDriver,
-                                     Method method) {
-        if (annotation instanceof Select) {
-            return buildSqlSourceFromStrings(((Select) annotation).value(), parameterType, languageDriver);
-        }
-        if (annotation instanceof Update) {
-            return buildSqlSourceFromStrings(((Update) annotation).value(), parameterType, languageDriver);
-        } else if (annotation instanceof Insert) {
-            return buildSqlSourceFromStrings(((Insert) annotation).value(), parameterType, languageDriver);
-        } else if (annotation instanceof Delete) {
-            return buildSqlSourceFromStrings(((Delete) annotation).value(), parameterType, languageDriver);
-        } else if (annotation instanceof SelectKey) {
-            return buildSqlSourceFromStrings(((SelectKey) annotation).statement(), parameterType, languageDriver);
-        }
-        return new ProviderSqlSource(assistant.getConfiguration(), annotation, type, method);
-    }
-
-    private SqlSource buildSqlSourceFromStrings(String[] strings, Class<?> parameterTypeClass,
-                                                LanguageDriver languageDriver) {
-        return languageDriver.createSqlSource(configuration, String.join(" ", strings).trim(), parameterTypeClass);
+        return value == null || value.trim().isEmpty() ? null : value;
     }
 
     /**

@@ -1,9 +1,20 @@
 package top.zephyrs.mybatis.semi;
 
 
+import org.apache.ibatis.executor.Executor;
+import org.apache.ibatis.executor.parameter.ParameterHandler;
+import org.apache.ibatis.executor.resultset.DefaultResultSetHandler;
+import org.apache.ibatis.executor.resultset.ResultSetHandler;
+import org.apache.ibatis.logging.Log;
+import org.apache.ibatis.logging.LogFactory;
+import org.apache.ibatis.mapping.BoundSql;
+import org.apache.ibatis.mapping.Environment;
+import org.apache.ibatis.mapping.MappedStatement;
+import org.apache.ibatis.session.Configuration;
+import org.apache.ibatis.session.ResultHandler;
+import org.apache.ibatis.session.RowBounds;
 import top.zephyrs.mybatis.semi.config.GlobalConfig;
 import top.zephyrs.mybatis.semi.config.KeyGenerateConfig;
-import top.zephyrs.mybatis.semi.config.SensitiveConfig;
 import top.zephyrs.mybatis.semi.exceptions.KeyGenerateException;
 import top.zephyrs.mybatis.semi.executor.ParameterHandlerWrapper;
 import top.zephyrs.mybatis.semi.executor.ResultSetHandlerWrapper;
@@ -12,28 +23,15 @@ import top.zephyrs.mybatis.semi.injects.InjectMethod;
 import top.zephyrs.mybatis.semi.injects.InjectProcessor;
 import top.zephyrs.mybatis.semi.plugins.keygenerate.IdType;
 import top.zephyrs.mybatis.semi.plugins.keygenerate.KeyCreator;
-import top.zephyrs.mybatis.semi.plugins.keygenerate.KeyGenerateInterceptor;
 import top.zephyrs.mybatis.semi.plugins.keygenerate.generators.AutoKeyCreator;
 import top.zephyrs.mybatis.semi.plugins.keygenerate.generators.NoneKeyCreator;
 import top.zephyrs.mybatis.semi.plugins.keygenerate.generators.SnowflakeKeyCreator;
 import top.zephyrs.mybatis.semi.plugins.keygenerate.generators.UUIDKeyCreator;
-import org.apache.ibatis.executor.Executor;
-import org.apache.ibatis.executor.parameter.ParameterHandler;
-import org.apache.ibatis.executor.resultset.DefaultResultSetHandler;
-import org.apache.ibatis.executor.resultset.ResultSetHandler;
-import org.apache.ibatis.mapping.BoundSql;
-import org.apache.ibatis.mapping.Environment;
-import org.apache.ibatis.mapping.MappedStatement;
-import org.apache.ibatis.session.Configuration;
-import org.apache.ibatis.session.ResultHandler;
-import org.apache.ibatis.session.RowBounds;
-import org.apache.ibatis.logging.Log;
-import org.apache.ibatis.logging.LogFactory;
 
-import top.zephyrs.mybatis.semi.plugins.sensitive.SensitiveDecryptInterceptor;
-import top.zephyrs.mybatis.semi.plugins.sensitive.SensitiveEncryptInterceptor;
-
-import java.util.*;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
 
 /**
  * 扩展的 org.apache.ibatis.session.Configuration
@@ -62,6 +60,7 @@ public class SemiMybatisConfiguration extends Configuration {
      * 敏感数据加解密工具
      */
     private final Set<String> sensitiveMappedStatementIds = new HashSet<>();
+
 
     public SemiMybatisConfiguration(Environment environment) {
         super(environment);
@@ -112,11 +111,11 @@ public class SemiMybatisConfiguration extends Configuration {
      */
     private synchronized void buildAllProcessorStatements() {
         // 加载需要代理的公用方法
-        if(!injectProcessor.isLoaded()) {
+        if (!injectProcessor.isLoaded()) {
             injectProcessor.loadMethods();
         }
 
-        for(Class<?> type: mapperRegistry.getMappers()) {
+        for (Class<?> type : mapperRegistry.getMappers()) {
             boolean loadCompleted = false;
             try {
                 SemiMapperBuilder parse = new SemiMapperBuilder(this, type);
@@ -124,7 +123,7 @@ public class SemiMybatisConfiguration extends Configuration {
                 loadCompleted = true;
             } finally {
                 if (!loadCompleted) {
-                    log.error("parse mapper failed: "+ type.getName());
+                    log.error("parse mapper failed: " + type.getName());
                 }
             }
         }
@@ -152,19 +151,19 @@ public class SemiMybatisConfiguration extends Configuration {
 
     public void setKeyCreators() {
         KeyGenerateConfig cfg = this.globalConfig.getKeyGenerate();
-        if(cfg == null) {
+        if (cfg == null) {
             cfg = new KeyGenerateConfig();
         }
         this.setKeyCreator(IdType.UUID, new UUIDKeyCreator());
         this.setKeyCreator(IdType.SNOWFLAKE, new SnowflakeKeyCreator(cfg.getWorkId()));
         this.setKeyCreator(IdType.NONE, new NoneKeyCreator());
         this.setKeyCreator(IdType.AUTO, new AutoKeyCreator());
-        try{
-            if(cfg.getCustomKeyCreator() != null) {
+        try {
+            if (cfg.getCustomKeyCreator() != null) {
                 this.setKeyCreator(IdType.CUSTOM, cfg.getCustomKeyCreator().getDeclaredConstructor().newInstance());
             }
-        }catch (Exception e) {
-            throw new KeyGenerateException("Failed to create custom keyCreator. Please check the constructor function. class="+cfg.getCustomKeyCreator().getName(), e);
+        } catch (Exception e) {
+            throw new KeyGenerateException("Failed to create custom keyCreator. Please check the constructor function. class=" + cfg.getCustomKeyCreator().getName(), e);
         }
         this.setKeyCreator(IdType.DEFAULT, this.getKeyCreator(cfg.getDefaultIdType()));
     }
@@ -179,6 +178,7 @@ public class SemiMybatisConfiguration extends Configuration {
 
     /**
      * 添加需要解密的MapperStatement，只有在默认不解密的情况下需要设置
+     *
      * @param id mappedStatement Id
      */
     public void addSensitiveMappedStatementIds(String id) {
@@ -186,18 +186,19 @@ public class SemiMybatisConfiguration extends Configuration {
     }
 
     /**
-     *
      * 判断是否需要解密
+     *
      * @param id mappedStatement Id
      * @return true: 需要解密 false: 不需要解密
      */
     public boolean isSensitiveDecrypt(String id) {
-        if(globalConfig.getSensitive() == null || !globalConfig.getSensitive().isOpen()) {
+        if (globalConfig.getSensitive() == null || !globalConfig.getSensitive().isOpen()) {
             return false;
         }
-        if(globalConfig.getSensitive().isDefaultDecrypt()) {
+        if (globalConfig.getSensitive().isDefaultDecrypt()) {
             return true;
         }
         return this.sensitiveMappedStatementIds.contains(id);
     }
+
 }
