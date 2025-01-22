@@ -31,7 +31,7 @@ public class UpdateById extends AbstractInjectMethod {
 
         StringBuilder setScript = new StringBuilder("<set>");
         for (ColumnInfo column : tableInfo.getColumns()) {
-            if(!column.isPK()&&column.isUpdate()) {
+            if(!column.isPK() && column.isExists() && column.isUpdate()) {
                 if(column.isIfNullUpdate()) {
                     if(column.getTypeHandler() == null || column.getTypeHandler().equals(UnknownTypeHandler.class)) {
                         setScript.append(column.getColumnName()).append("=#{").append(column.getFieldName())
