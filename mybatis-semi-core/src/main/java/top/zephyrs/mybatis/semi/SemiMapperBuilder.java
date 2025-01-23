@@ -37,10 +37,11 @@ import top.zephyrs.mybatis.semi.base.IMapper;
 import top.zephyrs.mybatis.semi.config.SensitiveConfig;
 import top.zephyrs.mybatis.semi.injects.InjectMethod;
 import top.zephyrs.mybatis.semi.metadata.ColumnInfo;
-import top.zephyrs.mybatis.semi.metadata.MetadataHelper;
+import top.zephyrs.mybatis.semi.metadata.MetaHelper;
 import top.zephyrs.mybatis.semi.metadata.ReflectionUtils;
-import top.zephyrs.mybatis.semi.metadata.TableInfo;
+import top.zephyrs.mybatis.semi.metadata.MetaInfo;
 
+import java.io.Serializable;
 import java.lang.reflect.*;
 import java.util.*;
 
@@ -93,26 +94,11 @@ public class SemiMapperBuilder {
 
             //获取通用的自动代理的方法
             String mappedProcessorId = method.getName();
-            InjectMethod processor = configuration.getInjectMethod(mappedProcessorId);
+            InjectMethod processor = configuration.getInjectMethod(mappedProcessorId, method);
             if (processor == null) {
                 continue;
             }
-
-            //代理的类
-            Class<?> beanClass = getBeanType(type);
-            if (beanClass == null) {
-                return;
-            }
-            //获取对应的表信息
-            TableInfo tableInfo = MetadataHelper.getTableInfo(configuration.getGlobalConfig(), beanClass, true);
-            if (tableInfo == null) {
-                return;
-            }
-            // 自定义的结果集解析
-            if (method.getAnnotation(ResultMap.class) == null) {
-                parseResultMap(method, tableInfo);
-            }
-            parseStatement(mappedStatementId, method, processor, beanClass, tableInfo);
+            parseStatement(mappedStatementId, method, processor);
         }
         parsePendingMethods();
     }
@@ -158,7 +144,7 @@ public class SemiMapperBuilder {
         if (configuration.hasResultMap(newResultMapId)) {
             newResultMap = configuration.getResultMap(newResultMapId);
         } else {
-            TableInfo metaInfo = MetadataHelper.getTableInfo(configuration.getGlobalConfig(), returnType, true);
+            MetaInfo metaInfo = MetaHelper.getMetaInfo(configuration.getGlobalConfig(), returnType, true);
             List<ResultMapping> resultMappings = new ArrayList<>();
             for (ColumnInfo columnInfo : metaInfo.getColumns()) {
                 if (columnInfo.getTypeHandler() != null && columnInfo.getTypeHandler() != UnknownTypeHandler.class) {
@@ -186,62 +172,39 @@ public class SemiMapperBuilder {
         }
     }
 
-    private String parseResultMap(Method method, TableInfo tableInfo) {
+
+    void parseStatement(String mappedStatementId, Method method, InjectMethod processor) {
+
         Class<?> returnType = getReturnType(method, type);
-        String resultMapId = generateResultMapName(method);
-        applyResultMap(resultMapId, returnType, tableInfo);
-        return resultMapId;
-    }
-
-    private String generateResultMapName(Method method) {
-        Results results = method.getAnnotation(Results.class);
-        if (results != null && !results.id().isEmpty()) {
-            return type.getName() + "." + results.id();
+        Class<?> parameterTypeClass = getParameterType(method);
+        SqlCommandType sqlCommandType = processor.getSqlCommandType();
+        boolean isSelect = sqlCommandType == SqlCommandType.SELECT;
+        //获取对应的对象配置信息
+        MetaInfo metaInfo = null;
+        if(isSelect) {
+            metaInfo = MetaHelper.getMetaInfo(configuration.getGlobalConfig(), returnType, true);
+        } else if(!parameterTypeClass.isPrimitive()) {
+            if(parameterTypeClass.equals(Object.class) || parameterTypeClass.equals(Serializable.class)) {
+                parameterTypeClass = getBeanType(type);
+            }
+            metaInfo = MetaHelper.getMetaInfo(configuration.getGlobalConfig(), parameterTypeClass, true);
         }
-        StringBuilder suffix = new StringBuilder();
-        for (Class<?> c : method.getParameterTypes()) {
-            suffix.append("-");
-            suffix.append(c.getSimpleName());
-        }
-        if (suffix.length() < 1) {
-            suffix.append("-void");
-        }
-        return type.getName() + "." + method.getName() + suffix;
-    }
 
-    private void applyResultMap(String resultMapId, Class<?> returnType, TableInfo tableInfo) {
-        if (configuration.hasResultMap(resultMapId)) {
-            return;
-        }
-        List<ResultMapping> resultMappings = new ArrayList<>();
-        if (returnType.isAssignableFrom(tableInfo.getType())) {
-
-            for (ColumnInfo columnInfo : tableInfo.getColumns()) {
-                if (columnInfo.getTypeHandler() != null && columnInfo.getTypeHandler() != UnknownTypeHandler.class) {
-
-                    List<ResultFlag> flags = new ArrayList<>();
-                    if (columnInfo.isPK()) {
-                        flags.add(ResultFlag.ID);
-                    }
-                    Class<? extends TypeHandler<?>> typeHandlerClazz = columnInfo.getTypeHandler();
-
-                    ResultMapping resultMapping = assistant.buildResultMapping(returnType, columnInfo.getFieldName(), columnInfo.getColumnName(),
-                            columnInfo.getFieldType(), null, null, null, null, null,
-                            typeHandlerClazz, flags, null, null, isLazy());
-                    resultMappings.add(resultMapping);
-                }
+        String resultMapId = null;
+        if (isSelect) {
+            ResultMap resultMapAnnotation = method.getAnnotation(ResultMap.class);
+            if (resultMapAnnotation != null) {
+                resultMapId = String.join(",", resultMapAnnotation.value());
+            } else {
+                resultMapId = generateResultMapName(method);
+                // 自定义的结果集解析
+                applyResultMap(resultMapId, returnType, metaInfo);
             }
         }
-        assistant.addResultMap(resultMapId, returnType, null, null, resultMappings, null);
-    }
 
-
-    void parseStatement(String mappedStatementId, Method method, InjectMethod processor, Class<?> beanClass, TableInfo tableInfo) {
-
-        Class<?> parameterTypeClass = getParameterType(method);
         LanguageDriver languageDriver = getLanguageDriver(method);
 
-        SqlSource sqlSource = processor.createSqlSource(configuration, type, beanClass, method, parameterTypeClass, languageDriver);
+        SqlSource sqlSource = processor.createSqlSource(configuration, metaInfo, method, parameterTypeClass, languageDriver);
         if (sqlSource == null) {
             return;
         }
@@ -249,10 +212,8 @@ public class SemiMapperBuilder {
         String databaseId = processor.databaseId();
 
         Options options = method.getAnnotation(Options.class);
-        SqlCommandType sqlCommandType = processor.getSqlCommandType();
 
         ResultSetType resultSetType = configuration.getDefaultResultSetType();
-        boolean isSelect = sqlCommandType == SqlCommandType.SELECT;
         boolean flushCache = !isSelect;
         boolean useCache = isSelect;
 
@@ -286,20 +247,53 @@ public class SemiMapperBuilder {
             databaseId = databaseIdAnnotation.value();
         }
 
-        String resultMapId = null;
-        if (isSelect) {
-            ResultMap resultMapAnnotation = method.getAnnotation(ResultMap.class);
-            if (resultMapAnnotation != null) {
-                resultMapId = String.join(",", resultMapAnnotation.value());
-            } else {
-                resultMapId = generateResultMapName(method);
-            }
-        }
-        processor.addMappedStatement(tableInfo, assistant,
+        processor.addMappedStatement(metaInfo, assistant,
                 mappedStatementId, sqlSource, statementType, sqlCommandType, fetchSize, timeout,
                 null, parameterTypeClass, resultMapId, getReturnType(method, type), resultSetType, flushCache, useCache,
                 false, NoKeyGenerator.INSTANCE, null, null, databaseId, languageDriver,
                 options != null ? nullOrEmpty(options.resultSets()) : null, processor.isDirtySelect());
+    }
+
+    private String generateResultMapName(Method method) {
+        Results results = method.getAnnotation(Results.class);
+        if (results != null && !results.id().isEmpty()) {
+            return type.getName() + "." + results.id();
+        }
+        StringBuilder suffix = new StringBuilder();
+        for (Class<?> c : method.getParameterTypes()) {
+            suffix.append("-");
+            suffix.append(c.getSimpleName());
+        }
+        if (suffix.length() < 1) {
+            suffix.append("-void");
+        }
+        return type.getName() + "." + method.getName() + suffix;
+    }
+
+    private void applyResultMap(String resultMapId, Class<?> returnType, MetaInfo metaInfo) {
+        if (configuration.hasResultMap(resultMapId)) {
+            return;
+        }
+        List<ResultMapping> resultMappings = new ArrayList<>();
+        if (metaInfo != null && returnType.isAssignableFrom(metaInfo.getType())) {
+
+            for (ColumnInfo columnInfo : metaInfo.getColumns()) {
+                if (columnInfo.getTypeHandler() != null && columnInfo.getTypeHandler() != UnknownTypeHandler.class) {
+
+                    List<ResultFlag> flags = new ArrayList<>();
+                    if (columnInfo.isPK()) {
+                        flags.add(ResultFlag.ID);
+                    }
+                    Class<? extends TypeHandler<?>> typeHandlerClazz = columnInfo.getTypeHandler();
+
+                    ResultMapping resultMapping = assistant.buildResultMapping(returnType, columnInfo.getFieldName(), columnInfo.getColumnName(),
+                            columnInfo.getFieldType(), null, null, null, null, null,
+                            typeHandlerClazz, flags, null, null, isLazy());
+                    resultMappings.add(resultMapping);
+                }
+            }
+        }
+        assistant.addResultMap(resultMapId, returnType, null, null, resultMappings, null);
     }
 
     private LanguageDriver getLanguageDriver(Method method) {
@@ -311,7 +305,12 @@ public class SemiMapperBuilder {
         return configuration.getLanguageDriver(langClass);
     }
 
-    private Class<?> getParameterType(Method method) {
+    /**
+     * 获取参数类型
+     * @param method
+     * @return
+     */
+    private static Class<?> getParameterType(Method method) {
         Class<?> parameterType = null;
         Class<?>[] parameterTypes = method.getParameterTypes();
         for (Class<?> currentParameterType : parameterTypes) {
@@ -328,6 +327,12 @@ public class SemiMapperBuilder {
         return parameterType;
     }
 
+    /**
+     * 获取返回值类型
+     * @param method
+     * @param type
+     * @return
+     */
     private static Class<?> getReturnType(Method method, Class<?> type) {
         Class<?> returnType = method.getReturnType();
         Type resolvedReturnType = TypeParameterResolver.resolveReturnType(method, type);
@@ -395,24 +400,23 @@ public class SemiMapperBuilder {
     }
 
     /**
-     * 通过反射,获得定义Class时声明的父类的范型参数的类型.
+     * 获取 IMapper注解的泛型类型
      *
      * @param mapperClass mapper类型
      * @return mapper支持的类型（泛型）
      */
     protected Class<?> getBeanType(Class<?> mapperClass) {
-        if (!IMapper.class.isAssignableFrom(type)) {
-            return null;
-        }
-        for (Type type : mapperClass.getGenericInterfaces()) {
-            if (!(type instanceof ParameterizedType)) {
-                continue;
+        if (IMapper.class.isAssignableFrom(type)) {
+            for (Type type : mapperClass.getGenericInterfaces()) {
+                if (!(type instanceof ParameterizedType)) {
+                    continue;
+                }
+                Type[] params = ((ParameterizedType) type).getActualTypeArguments();
+                if (params.length == 0 || !(params[0] instanceof Class)) {
+                    continue;
+                }
+                return (Class<?>) params[0];
             }
-            Type[] params = ((ParameterizedType) type).getActualTypeArguments();
-            if (params.length == 0 || !(params[0] instanceof Class)) {
-                continue;
-            }
-            return (Class<?>) params[0];
         }
         return Object.class;
     }

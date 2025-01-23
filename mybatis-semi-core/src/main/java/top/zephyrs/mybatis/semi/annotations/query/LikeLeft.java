@@ -13,9 +13,15 @@ import java.lang.annotation.Target;
 public @interface LikeLeft {
 
     /**
-     * 查询的列对应Bean的属性（Column的字段名称）
+     * 查询的列对应Bean的属性（类属性名称）
      * @return Bean字段名称
      */
     String value() default "";
+
+    /**
+     * 查询语句中的列名称
+     * @return 列的名称
+     */
+    String column() default "";
 
 }

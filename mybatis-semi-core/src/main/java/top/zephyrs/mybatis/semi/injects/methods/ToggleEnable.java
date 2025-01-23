@@ -3,7 +3,7 @@ package top.zephyrs.mybatis.semi.injects.methods;
 import top.zephyrs.mybatis.semi.SemiMybatisConfiguration;
 import top.zephyrs.mybatis.semi.injects.AbstractInjectMethod;
 import top.zephyrs.mybatis.semi.metadata.ColumnInfo;
-import top.zephyrs.mybatis.semi.metadata.TableInfo;
+import top.zephyrs.mybatis.semi.metadata.MetaInfo;
 import org.apache.ibatis.mapping.SqlCommandType;
 
 public class ToggleEnable extends AbstractInjectMethod {
@@ -19,26 +19,25 @@ public class ToggleEnable extends AbstractInjectMethod {
 
     @Override
     public String buildSqlScript(SemiMybatisConfiguration configuration,
-                                 Class<?> beanClass, Class<?> parameterTypeClass,
-                                 TableInfo tableInfo) {
+                                 MetaInfo metaInfo) {
 
-        if(!tableInfo.isEnable()) {
-            return null;
+        if(!metaInfo.isEnable()) {
+            return EMPTY_STR;
         }
 
-        ColumnInfo primary = tableInfo.getPkColumn();
+        ColumnInfo primary = metaInfo.getPkColumn();
         if(primary == null) {
-            return null;
+            return EMPTY_STR;
         }
-        ColumnInfo enableColumn = tableInfo.getEnableColumn();
+        ColumnInfo enableColumn = metaInfo.getEnableColumn();
         String sqlTmpl = "UPDATE %s SET %s=CASE %s WHEN %s THEN %s ELSE %s END WHERE %s";
         return String.format(sqlTmpl,
-                tableInfo.getTableName(),
+                metaInfo.getTableName(),
                 enableColumn.getColumnName(),
                 enableColumn.getColumnName(),
-                tableInfo.getEnabledValue(),
-                tableInfo.getDisabledValue(),
-                tableInfo.getEnabledValue(),
+                metaInfo.getEnabledValue(),
+                metaInfo.getDisabledValue(),
+                metaInfo.getEnabledValue(),
                 primary.getColumnName() + "=#{id}");
 
     }

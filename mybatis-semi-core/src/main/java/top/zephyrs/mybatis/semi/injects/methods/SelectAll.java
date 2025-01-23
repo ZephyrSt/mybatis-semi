@@ -3,7 +3,7 @@ package top.zephyrs.mybatis.semi.injects.methods;
 import top.zephyrs.mybatis.semi.SemiMybatisConfiguration;
 import top.zephyrs.mybatis.semi.injects.AbstractInjectMethod;
 import top.zephyrs.mybatis.semi.metadata.ColumnInfo;
-import top.zephyrs.mybatis.semi.metadata.TableInfo;
+import top.zephyrs.mybatis.semi.metadata.MetaInfo;
 import org.apache.ibatis.mapping.SqlCommandType;
 
 public class SelectAll extends AbstractInjectMethod {
@@ -18,28 +18,26 @@ public class SelectAll extends AbstractInjectMethod {
     }
 
     @Override
-    public String buildSqlScript(SemiMybatisConfiguration configuration,
-                                 Class<?> beanClass, Class<?> parameterTypeClass,
-                                 TableInfo tableInfo) {
+    public String buildSqlScript(SemiMybatisConfiguration configuration, MetaInfo metaInfo) {
 
         StringBuilder columnScript = new StringBuilder();
-        for (ColumnInfo column : tableInfo.getColumns()) {
+        for (ColumnInfo column : metaInfo.getColumns()) {
             if(column.isSelect()) {
                 columnScript.append(column.getColumnName()).append(", ");
             }
         }
         String columns = columnScript.substring(0, columnScript.length()-2);
         //逻辑删除的不查询
-        if(tableInfo.isLogical()) {
+        if(metaInfo.isLogical()) {
             String sqlTemplate = "SELECT %s FROM %s WHERE %s=%s";
             return String.format(sqlTemplate,
                     columns,
-                    tableInfo.getTableName(),
-                    tableInfo.getLogicalColumn().getColumnName(),
-                    tableInfo.getNoDeletedValue());
+                    metaInfo.getTableName(),
+                    metaInfo.getLogicalColumn().getColumnName(),
+                    metaInfo.getNoDeletedValue());
         }else {
             String sqlTemplate = "SELECT %s FROM %s";
-            return String.format(sqlTemplate, columns, tableInfo.getTableName());
+            return String.format(sqlTemplate, columns, metaInfo.getTableName());
         }
     }
 }

@@ -1,5 +1,9 @@
 package top.zephyrs.mybatis.semi.injects;
 
+import top.zephyrs.mybatis.semi.annotations.Search;
+import top.zephyrs.mybatis.semi.injects.methods.SelectByQueryAnnotation;
+
+import java.lang.reflect.Method;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
@@ -10,6 +14,11 @@ import java.util.Map;
 public abstract class InjectProcessor {
 
     protected Map<String, InjectMethod> injectMethodMap = new HashMap<>();
+
+    /**
+     * 根据Query注解定义SQL, 并根据查询参数拼接查询条件
+     */
+    protected SelectByQueryAnnotation selectByQueryAnnotation = new SelectByQueryAnnotation();
 
     /**
      * 加载通用方法
@@ -26,7 +35,10 @@ public abstract class InjectProcessor {
         return injectMethodMap.values();
     }
 
-    public InjectMethod getMethod(String id) {
+    public InjectMethod getMethod(String id, Method method) {
+        if(method.getAnnotation(Search.class) != null ) {
+            return selectByQueryAnnotation;
+        }
         return injectMethodMap.get(id);
     }
 

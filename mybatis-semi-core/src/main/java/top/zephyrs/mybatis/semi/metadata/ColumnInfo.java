@@ -35,7 +35,7 @@ public class ColumnInfo {
     private boolean ifNullUpdate;
 
     /**
-     * 是否是字段
+     * 是否是表的列
      */
     private boolean exists;
 

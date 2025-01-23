@@ -3,7 +3,7 @@ package top.zephyrs.mybatis.semi.injects.methods;
 import top.zephyrs.mybatis.semi.SemiMybatisConfiguration;
 import top.zephyrs.mybatis.semi.injects.AbstractInjectMethod;
 import top.zephyrs.mybatis.semi.metadata.ColumnInfo;
-import top.zephyrs.mybatis.semi.metadata.TableInfo;
+import top.zephyrs.mybatis.semi.metadata.MetaInfo;
 import org.apache.ibatis.mapping.SqlCommandType;
 
 public class DeleteById extends AbstractInjectMethod {
@@ -18,26 +18,24 @@ public class DeleteById extends AbstractInjectMethod {
     }
 
     @Override
-    public String buildSqlScript(SemiMybatisConfiguration configuration,
-                                 Class<?> beanClass, Class<?> parameterTypeClass,
-                                 TableInfo tableInfo) {
+    public String buildSqlScript(SemiMybatisConfiguration configuration, MetaInfo metaInfo) {
 
-        ColumnInfo primary = tableInfo.getPkColumn();
+        ColumnInfo primary = metaInfo.getPkColumn();
         if(primary == null) {
             return null;
         }
         String sql;
-        if (tableInfo.isLogical()) {
+        if (metaInfo.isLogical()) {
             String sqlTmpl = "UPDATE %s SET %s=%s WHERE %s";
-            String deletedColumn = tableInfo.getLogicalColumn().getColumnName();
+            String deletedColumn = metaInfo.getLogicalColumn().getColumnName();
             sql = String.format(sqlTmpl,
-                    tableInfo.getTableName(),
+                    metaInfo.getTableName(),
                     deletedColumn,
-                    tableInfo.getDeletedValue(),
+                    metaInfo.getDeletedValue(),
                     primary.getColumnName()+"=#{id}");
         } else {
             String sqlTmpl = "DELETE FROM %s WHERE %s";
-            sql = String.format(sqlTmpl, tableInfo.getTableName(),
+            sql = String.format(sqlTmpl, metaInfo.getTableName(),
                     primary.getColumnName()+"=#{id}");
         }
         return sql;

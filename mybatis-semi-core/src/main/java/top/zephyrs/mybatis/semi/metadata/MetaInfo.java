@@ -5,7 +5,7 @@ import java.util.List;
 /**
  * 表-Bean映射的信息
  */
-public class TableInfo {
+public class MetaInfo {
 
 
     /**

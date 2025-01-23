@@ -3,7 +3,7 @@ package top.zephyrs.mybatis.semi.injects.methods;
 import top.zephyrs.mybatis.semi.SemiMybatisConfiguration;
 import top.zephyrs.mybatis.semi.injects.AbstractInjectMethod;
 import top.zephyrs.mybatis.semi.metadata.ColumnInfo;
-import top.zephyrs.mybatis.semi.metadata.TableInfo;
+import top.zephyrs.mybatis.semi.metadata.MetaInfo;
 import org.apache.ibatis.mapping.SqlCommandType;
 
 public class Enable extends AbstractInjectMethod {
@@ -18,24 +18,22 @@ public class Enable extends AbstractInjectMethod {
     }
 
     @Override
-    public String buildSqlScript(SemiMybatisConfiguration configuration,
-                                 Class<?> beanClass, Class<?> parameterTypeClass,
-                                 TableInfo tableInfo) {
+    public String buildSqlScript(SemiMybatisConfiguration configuration, MetaInfo metaInfo) {
 
-        if(!tableInfo.isEnable()) {
-            return null;
+        if(!metaInfo.isEnable()) {
+            return EMPTY_STR;
         }
 
-        ColumnInfo primary = tableInfo.getPkColumn();
+        ColumnInfo primary = metaInfo.getPkColumn();
         if(primary == null) {
-            return null;
+            return EMPTY_STR;
         }
 
         String sqlTmpl = "UPDATE %s SET %s=%s WHERE %s";
         return String.format(sqlTmpl,
-                tableInfo.getTableName(),
-                tableInfo.getEnableColumn().getColumnName(),
-                tableInfo.getEnabledValue(),
+                metaInfo.getTableName(),
+                metaInfo.getEnableColumn().getColumnName(),
+                metaInfo.getEnabledValue(),
                 primary.getColumnName() + "=#{id}");
     }
 }

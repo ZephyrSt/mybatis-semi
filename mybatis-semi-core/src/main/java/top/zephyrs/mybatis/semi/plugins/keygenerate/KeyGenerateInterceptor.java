@@ -1,8 +1,8 @@
 package top.zephyrs.mybatis.semi.plugins.keygenerate;
 
 import top.zephyrs.mybatis.semi.SemiMybatisConfiguration;
-import top.zephyrs.mybatis.semi.metadata.MetadataHelper;
-import top.zephyrs.mybatis.semi.metadata.TableInfo;
+import top.zephyrs.mybatis.semi.metadata.MetaHelper;
+import top.zephyrs.mybatis.semi.metadata.MetaInfo;
 import org.apache.ibatis.executor.Executor;
 import org.apache.ibatis.mapping.MappedStatement;
 import org.apache.ibatis.mapping.SqlCommandType;
@@ -28,9 +28,9 @@ public class KeyGenerateInterceptor implements Interceptor {
         if(sqlCommandType == SqlCommandType.INSERT) {
             // 获取参数
             Object parameter = invocation.getArgs()[1];
-            TableInfo tableInfo = MetadataHelper.getTableInfo(parameter.getClass());
-            if(tableInfo != null) {
-                KeyHelper.setKey(configuration, parameter, tableInfo);
+            MetaInfo metaInfo = MetaHelper.getMetaInfo(parameter.getClass());
+            if(metaInfo != null) {
+                KeyHelper.setKey(configuration, parameter, metaInfo);
             }
         }
         //执行结果

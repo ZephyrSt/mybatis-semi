@@ -4,7 +4,7 @@ import org.apache.ibatis.type.UnknownTypeHandler;
 import top.zephyrs.mybatis.semi.SemiMybatisConfiguration;
 import top.zephyrs.mybatis.semi.injects.AbstractInjectMethod;
 import top.zephyrs.mybatis.semi.metadata.ColumnInfo;
-import top.zephyrs.mybatis.semi.metadata.TableInfo;
+import top.zephyrs.mybatis.semi.metadata.MetaInfo;
 import org.apache.ibatis.mapping.SqlCommandType;
 
 public class UpdateById extends AbstractInjectMethod {
@@ -20,17 +20,16 @@ public class UpdateById extends AbstractInjectMethod {
 
     @Override
     public String buildSqlScript(SemiMybatisConfiguration configuration,
-                                 Class<?> beanClass, Class<?> parameterTypeClass,
-                                 TableInfo tableInfo) {
+                                 MetaInfo metaInfo) {
 
 
-        ColumnInfo primary = tableInfo.getPkColumn();
+        ColumnInfo primary = metaInfo.getPkColumn();
         if(primary == null) {
             return null;
         }
 
         StringBuilder setScript = new StringBuilder("<set>");
-        for (ColumnInfo column : tableInfo.getColumns()) {
+        for (ColumnInfo column : metaInfo.getColumns()) {
             if(!column.isPK() && column.isExists() && column.isUpdate()) {
                 if(column.isIfNullUpdate()) {
                     if(column.getTypeHandler() == null || column.getTypeHandler().equals(UnknownTypeHandler.class)) {
@@ -57,7 +56,7 @@ public class UpdateById extends AbstractInjectMethod {
         }
         setScript.append("</set>");
         String sqlTmpl = "<script>update %s %s where %s</script>";
-        return String.format(sqlTmpl, tableInfo.getTableName(), setScript,
+        return String.format(sqlTmpl, metaInfo.getTableName(), setScript,
                 primary.getColumnName() + "=#{" + primary.getFieldName() + "}");
 
     }

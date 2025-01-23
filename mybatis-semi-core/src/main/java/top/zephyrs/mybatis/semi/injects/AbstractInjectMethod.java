@@ -1,8 +1,8 @@
 package top.zephyrs.mybatis.semi.injects;
 
 import top.zephyrs.mybatis.semi.SemiMybatisConfiguration;
-import top.zephyrs.mybatis.semi.metadata.TableInfo;
-import top.zephyrs.mybatis.semi.metadata.MetadataHelper;
+import top.zephyrs.mybatis.semi.metadata.MetaInfo;
+import top.zephyrs.mybatis.semi.metadata.MetaHelper;
 import org.apache.ibatis.builder.MapperBuilderAssistant;
 import org.apache.ibatis.executor.keygen.KeyGenerator;
 import org.apache.ibatis.mapping.*;
@@ -15,6 +15,8 @@ import java.lang.reflect.Method;
  */
 public abstract class AbstractInjectMethod implements InjectMethod {
 
+    public static final String EMPTY_STR = "";
+
     @Override
     public String databaseId() {
         return "";
@@ -25,7 +27,7 @@ public abstract class AbstractInjectMethod implements InjectMethod {
     }
 
     @Override
-    public MappedStatement addMappedStatement(TableInfo tableInfo,
+    public MappedStatement addMappedStatement(MetaInfo metaInfo,
                                               MapperBuilderAssistant assistant,
                                               String id, SqlSource sqlSource, StatementType statementType,
                                               SqlCommandType sqlCommandType, Integer fetchSize, Integer timeout,
@@ -42,16 +44,16 @@ public abstract class AbstractInjectMethod implements InjectMethod {
 
     @Override
     public SqlSource createSqlSource(SemiMybatisConfiguration configuration,
-                                     Class<?> mapperClass, Class<?> beanClass, Method method,
+                                     MetaInfo metaInfo,
+                                     Method method,
                                      Class<?> parameterTypeClass,
                                      LanguageDriver languageDriver) {
 
-        TableInfo tableInfo = MetadataHelper.getTableInfo(configuration.getGlobalConfig(), beanClass, true);
-        if (tableInfo == null) {
+        if (metaInfo == null) {
             return null;
         }
-        String sqlScript = this.buildSqlScript(configuration, beanClass, parameterTypeClass, tableInfo);
-        if(sqlScript == null || sqlScript.isEmpty()) {
+        String sqlScript = this.buildSqlScript(configuration, metaInfo);
+        if(sqlScript == null) {
             return null;
         }
         return languageDriver.createSqlSource(configuration, sqlScript, parameterTypeClass);
@@ -60,13 +62,11 @@ public abstract class AbstractInjectMethod implements InjectMethod {
     /**
      * 构建sql语句
      * @param configuration mybatis配置信息
-     * @param beanClass Mapper的泛型的具体类型
-     * @param parameterTypeClass 参数类型
-     * @param tableInfo 对应的 表信息，包含列，字段，表名等等
+//     * @param beanClass Mapper的泛型的具体类型
+//     * @param parameterTypeClass 参数类型
+     * @param metaInfo 对应的 表信息，包含列，字段，表名等等
      * @return sql语句
      */
-    protected abstract String buildSqlScript(SemiMybatisConfiguration configuration,
-                                             Class<?> beanClass, Class<?> parameterTypeClass,
-                                             TableInfo tableInfo);
+    protected abstract String buildSqlScript(SemiMybatisConfiguration configuration, MetaInfo metaInfo);
 
 }

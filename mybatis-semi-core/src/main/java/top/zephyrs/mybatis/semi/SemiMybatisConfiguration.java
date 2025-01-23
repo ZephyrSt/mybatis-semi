@@ -28,6 +28,7 @@ import top.zephyrs.mybatis.semi.plugins.keygenerate.generators.NoneKeyCreator;
 import top.zephyrs.mybatis.semi.plugins.keygenerate.generators.SnowflakeKeyCreator;
 import top.zephyrs.mybatis.semi.plugins.keygenerate.generators.UUIDKeyCreator;
 
+import java.lang.reflect.Method;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -137,8 +138,8 @@ public class SemiMybatisConfiguration extends Configuration {
         this.globalConfig = globalConfig;
     }
 
-    public InjectMethod getInjectMethod(String id) {
-        return this.injectProcessor.getMethod(id);
+    public InjectMethod getInjectMethod(String id, Method method) {
+        return this.injectProcessor.getMethod(id, method);
     }
 
     public InjectProcessor getInjectProcessor() {

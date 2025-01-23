@@ -4,14 +4,14 @@ import top.zephyrs.mybatis.semi.SemiMybatisConfiguration;
 import top.zephyrs.mybatis.semi.exceptions.KeyGenerateException;
 import top.zephyrs.mybatis.semi.metadata.ColumnInfo;
 import top.zephyrs.mybatis.semi.metadata.ReflectionUtils;
-import top.zephyrs.mybatis.semi.metadata.TableInfo;
+import top.zephyrs.mybatis.semi.metadata.MetaInfo;
 
 import java.lang.reflect.Field;
 
 public class KeyHelper {
 
-    public static void setKey(SemiMybatisConfiguration configuration, Object parameter, TableInfo tableInfo) throws IllegalAccessException {
-        ColumnInfo column = tableInfo.getPkColumn();
+    public static void setKey(SemiMybatisConfiguration configuration, Object parameter, MetaInfo metaInfo) throws IllegalAccessException {
+        ColumnInfo column = metaInfo.getPkColumn();
         if (!column.isPK() || column.getIdType() == null || column.getIdType() == IdType.NONE || column.getIdType() == IdType.AUTO) {
             return;
         }

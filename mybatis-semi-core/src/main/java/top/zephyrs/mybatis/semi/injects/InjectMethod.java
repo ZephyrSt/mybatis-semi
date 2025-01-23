@@ -1,7 +1,7 @@
 package top.zephyrs.mybatis.semi.injects;
 
 import top.zephyrs.mybatis.semi.SemiMybatisConfiguration;
-import top.zephyrs.mybatis.semi.metadata.TableInfo;
+import top.zephyrs.mybatis.semi.metadata.MetaInfo;
 import org.apache.ibatis.builder.MapperBuilderAssistant;
 import org.apache.ibatis.executor.keygen.KeyGenerator;
 import org.apache.ibatis.mapping.*;
@@ -23,13 +23,12 @@ public interface InjectMethod {
     SqlCommandType getSqlCommandType();
 
     SqlSource createSqlSource(SemiMybatisConfiguration configuration,
-                              Class<?> mapperClass,
-                              Class<?> beanClass,
+                              MetaInfo metaInfo,
                               Method method,
                               Class<?> parameterTypeClass,
                               LanguageDriver languageDriver);
 
-    MappedStatement addMappedStatement(TableInfo tableInfo,
+    MappedStatement addMappedStatement(MetaInfo metaInfo,
                                        MapperBuilderAssistant assistant,
                                        String id, SqlSource sqlSource, StatementType statementType,
                                        SqlCommandType sqlCommandType, Integer fetchSize, Integer timeout, String parameterMap, Class<?> parameterType,

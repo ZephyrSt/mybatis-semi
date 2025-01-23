@@ -2,7 +2,6 @@ package top.zephyrs.mybatis.semi.plugins.sensitive;
 
 import top.zephyrs.mybatis.semi.annotations.Sensitive;
 import top.zephyrs.mybatis.semi.config.SensitiveConfig;
-import top.zephyrs.mybatis.semi.metadata.MetadataHelper;
 import top.zephyrs.mybatis.semi.metadata.ReflectionUtils;
 
 import java.lang.reflect.Field;
