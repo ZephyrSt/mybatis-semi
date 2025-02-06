@@ -166,7 +166,7 @@ public class SelectByQuery extends AbstractInjectMethod {
 
     private String in(Field field, MetaInfo metaInfo) {
         In in = field.getAnnotation(In.class);
-        if (in == null || !field.getType().isAssignableFrom(Collection.class)) {
+        if (in == null || !Collection.class.isAssignableFrom(field.getType())) {
             return EMPTY_STR;
         }
         String column = this.parseSelectColumn(metaInfo, field, in.value(), in.column());
