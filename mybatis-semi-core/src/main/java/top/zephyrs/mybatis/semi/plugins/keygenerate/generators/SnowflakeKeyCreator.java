@@ -6,6 +6,10 @@ public class SnowflakeKeyCreator implements KeyCreator<Long> {
 
     private final Snowflake snowflake;
 
+    public SnowflakeKeyCreator() {
+        this(0);
+    }
+
     public SnowflakeKeyCreator(long workId) {
         this.snowflake = new Snowflake(workId);
     }

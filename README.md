@@ -12,12 +12,14 @@
 + 通用查询接口
 ##### 快速开始
 
+如果项目使用springboot, 可以通过引入<b>mybatis-semi-spring-boot-starter</b>开始
 Maven引用
 
 ```xml
 <dependency>
 <groupId>top.zephyrs</groupId>
 <artifactId>mybatis-semi-spring-boot-starter</artifactId>
+    <!-- springboot3.x 引入 3.x.x, springboot 2.x 引入 2.x.x -->
 <version>Latest Version</version>
 </dependency>
 ```
@@ -28,7 +30,7 @@ Maven引用
 @Table("ur_user")
 public class User{
 
-    // Primary 主键标识主键，目前只支持单一字段主键
+    // Primary 主键标识主键，目前只支持单一字段主键. 如果 不存在 @Primary注解，默认使用 id列作为主键
     @Primary
     private Long userId;
     // Column注解标识字段，一般可省略。 默认使用驼峰转下划线的方式对应字段名称
@@ -80,7 +82,7 @@ DEFAULT(默认方式, 使用全局默认配置),
 NONE(不使用主键策略), 
 AUTO(使用数据库的自动生成)
 UUID,
-SNOWFLAKE(雪花算法)
+SNOWFLAKE(雪花算法，如果未指定默认的主键生成策略，则使用此算法)
 CUSTOM(自定义)
 可以通过 Primary 注解指定主键生成策略
 ```
@@ -89,7 +91,7 @@ private Long userId;
 ```
 可以通过GlobalConfig 指定默认的全局生成策略。
 通过指定 mybatis-semi.global-config.key-generate.custom-key-creator 可以指定 custom 对应的自定义策略
-
+可以通过 实现 KeyCreator 接口自定义主键生成策略
 ```java
 import java.util.UUID;
 
@@ -112,7 +114,7 @@ mybatis-semi:
       # 自定义的主键生成策略
       custom-key-creator: com.example.MyKeyCreator
 ```
-若不使用spring-boot-starter, 也可以在Configuration中替换指定的策略
+不使用spring-boot-starter, 也可以在Configuration中替换指定的策略
 ```
 configuration.setKeyCreator(IdType.CUSTOM, new MyKeyCreator());
 ```
