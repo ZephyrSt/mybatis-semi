@@ -21,6 +21,7 @@ public class MetaHelper {
      */
     private static final Map<Class<?>, MetaInfo> TABLE_INFO_CACHE = new ConcurrentHashMap<>();
 
+    private static final Set<Class<?>> noHaveMetaSet = new HashSet<>();
 
     public static MetaInfo getMetaInfo(Class<?> type) {
         return getMetaInfo(null, type, false);
@@ -29,10 +30,17 @@ public class MetaHelper {
     public static MetaInfo getMetaInfo(GlobalConfig config, Class<?> type, boolean loadIfNotExists) {
         MetaInfo metaInfo = TABLE_INFO_CACHE.get(type);
         if(metaInfo == null && loadIfNotExists) {
+            if(noHaveMetaSet.contains(type)) {
+                return null;
+            }
             synchronized (MetaHelper.class) {
                 metaInfo = TABLE_INFO_CACHE.get(type);
                 if(metaInfo == null) {
                     metaInfo = parseMetaInfo(config, type);
+                    if(metaInfo == null) {
+                        noHaveMetaSet.add(type);
+                        return null;
+                    }
                     TABLE_INFO_CACHE.put(type, metaInfo);
                 }
             }

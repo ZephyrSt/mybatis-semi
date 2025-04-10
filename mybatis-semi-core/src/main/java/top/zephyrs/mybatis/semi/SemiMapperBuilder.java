@@ -145,6 +145,9 @@ public class SemiMapperBuilder {
             newResultMap = configuration.getResultMap(newResultMapId);
         } else {
             MetaInfo metaInfo = MetaHelper.getMetaInfo(configuration.getGlobalConfig(), returnType, true);
+            if(metaInfo == null) {
+                return;
+            }
             List<ResultMapping> resultMappings = new ArrayList<>();
             for (ColumnInfo columnInfo : metaInfo.getColumns()) {
                 if (columnInfo.getTypeHandler() != null && columnInfo.getTypeHandler() != UnknownTypeHandler.class) {
