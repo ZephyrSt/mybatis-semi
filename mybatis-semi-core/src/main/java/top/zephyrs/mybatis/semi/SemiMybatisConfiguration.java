@@ -110,21 +110,23 @@ public class SemiMybatisConfiguration extends Configuration {
     /**
      * 同步处理解析
      */
-    private synchronized void buildAllProcessorStatements() {
+    private void buildAllProcessorStatements() {
         // 加载需要代理的公用方法
         if (!injectProcessor.isLoaded()) {
             injectProcessor.loadMethods();
         }
 
         for (Class<?> type : mapperRegistry.getMappers()) {
-            boolean loadCompleted = false;
-            try {
-                SemiMapperBuilder parse = new SemiMapperBuilder(this, type);
-                parse.parse();
-                loadCompleted = true;
-            } finally {
-                if (!loadCompleted) {
-                    log.error("parse mapper failed: " + type.getName());
+            synchronized (type) {
+                boolean loadCompleted = false;
+                try {
+                    SemiMapperBuilder parse = new SemiMapperBuilder(this, type);
+                    parse.parse();
+                    loadCompleted = true;
+                } finally {
+                    if (!loadCompleted) {
+                        log.error("parse mapper failed: " + type.getName());
+                    }
                 }
             }
         }

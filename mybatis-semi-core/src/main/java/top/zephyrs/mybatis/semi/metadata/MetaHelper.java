@@ -27,21 +27,40 @@ public class MetaHelper {
         return getMetaInfo(null, type, false);
     }
 
+    public static MetaInfo getMetaInfo(Class<?> type, boolean loadIfNotExists) {
+        return getMetaInfo(null, type, loadIfNotExists);
+    }
+
     public static MetaInfo getMetaInfo(GlobalConfig config, Class<?> type, boolean loadIfNotExists) {
+        if(type.equals(String.class)) {
+            return null;
+        }
+        if(type.isPrimitive()) {
+            return null;
+        }
         MetaInfo metaInfo = TABLE_INFO_CACHE.get(type);
-        if(metaInfo == null && loadIfNotExists) {
+        if(metaInfo == null) {
             if(noHaveMetaSet.contains(type)) {
                 return null;
             }
-            synchronized (MetaHelper.class) {
-                metaInfo = TABLE_INFO_CACHE.get(type);
-                if(metaInfo == null) {
-                    metaInfo = parseMetaInfo(config, type);
+            if(loadIfNotExists) {
+                synchronized (MetaHelper.class) {
+                    metaInfo = TABLE_INFO_CACHE.get(type);
                     if(metaInfo == null) {
-                        noHaveMetaSet.add(type);
-                        return null;
+                        metaInfo = parseMetaInfo(config, type);
+                        if(metaInfo == null) {
+                            noHaveMetaSet.add(type);
+                            return null;
+                        }
+                        TABLE_INFO_CACHE.put(type, metaInfo);
                     }
-                    TABLE_INFO_CACHE.put(type, metaInfo);
+                }
+            }
+
+            else {
+                Class parent = type.getSuperclass();
+                if(!parent.equals(Object.class)){
+                    return getMetaInfo(parent);
                 }
             }
         }

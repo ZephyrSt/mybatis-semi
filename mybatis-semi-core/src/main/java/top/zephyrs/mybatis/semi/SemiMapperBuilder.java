@@ -24,6 +24,8 @@ import org.apache.ibatis.builder.MapperBuilderAssistant;
 import org.apache.ibatis.builder.annotation.MethodResolver;
 import org.apache.ibatis.cursor.Cursor;
 import org.apache.ibatis.executor.keygen.NoKeyGenerator;
+import org.apache.ibatis.logging.Log;
+import org.apache.ibatis.logging.LogFactory;
 import org.apache.ibatis.mapping.*;
 import org.apache.ibatis.reflection.TypeParameterResolver;
 import org.apache.ibatis.scripting.LanguageDriver;
@@ -52,6 +54,7 @@ import java.util.*;
  */
 public class SemiMapperBuilder {
 
+    protected final Log log = LogFactory.getLog(this.getClass());
     private final SemiMybatisConfiguration configuration;
     private final MapperBuilderAssistant assistant;
     //Mapper类
@@ -65,8 +68,10 @@ public class SemiMapperBuilder {
     }
 
     public void parse() {
+        log.debug("semi parse mapper "+type.getName());
         assistant.setCurrentNamespace(type.getName());
         for (Method method : type.getMethods()) {
+            //判断是否需要生成 Statement。（排除默认方法和桥接方法）
             if (!canHaveStatement(method)) {
                 continue;
             }

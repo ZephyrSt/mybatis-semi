@@ -20,12 +20,12 @@ import org.springframework.boot.context.properties.NestedConfigurationProperty;
 import org.springframework.boot.context.properties.PropertyMapper;
 import top.zephyrs.mybatis.semi.SemiMybatisConfiguration;
 import top.zephyrs.mybatis.semi.config.EnableConfig;
-import top.zephyrs.mybatis.semi.config.KeyGenerateConfig;
-import top.zephyrs.mybatis.semi.config.LogicDeleteConfig;
 import top.zephyrs.mybatis.semi.config.SensitiveConfig;
 import top.zephyrs.mybatis.semi.exceptions.MappedProcessorException;
 import top.zephyrs.mybatis.semi.injects.DefaultInjectProcessor;
 import top.zephyrs.mybatis.semi.injects.InjectProcessor;
+import top.zephyrs.mybatis.semi.plugins.keygenerate.IdType;
+import top.zephyrs.mybatis.semi.plugins.keygenerate.KeyCreator;
 import top.zephyrs.mybatis.semi.plugins.keygenerate.KeyGenerateInterceptor;
 import top.zephyrs.mybatis.semi.plugins.sensitive.SensitiveDecryptInterceptor;
 import top.zephyrs.mybatis.semi.plugins.sensitive.SensitiveEncryptInterceptor;
@@ -172,4 +172,105 @@ public class SemiProperties {
         }
     }
 
+    public static class KeyGenerateConfig extends top.zephyrs.mybatis.semi.config.KeyGenerateConfig {
+
+        /**
+         * 主键生成时使用的机器编号(雪花算法)
+         */
+        @NestedConfigurationProperty
+        private long workId = 0L;
+
+        /**
+         * 默认的主键生成策略
+         */
+        @NestedConfigurationProperty
+        private IdType defaultIdType = IdType.SNOWFLAKE;
+
+        /**
+         * 自定义的主键生成策略的实现类
+         */
+        @NestedConfigurationProperty
+        private Class<? extends KeyCreator<?>> customKeyCreator;
+
+        @Override
+        public long getWorkId() {
+            return workId;
+        }
+
+        @Override
+        public void setWorkId(long workId) {
+            this.workId = workId;
+        }
+
+        @Override
+        public IdType getDefaultIdType() {
+            return defaultIdType;
+        }
+
+        @Override
+        public void setDefaultIdType(IdType defaultIdType) {
+            this.defaultIdType = defaultIdType;
+        }
+
+        @Override
+        public Class<? extends KeyCreator<?>> getCustomKeyCreator() {
+            return customKeyCreator;
+        }
+
+        @Override
+        public void setCustomKeyCreator(Class<? extends KeyCreator<?>> customKeyCreator) {
+            this.customKeyCreator = customKeyCreator;
+        }
+    }
+
+    public static class LogicDeleteConfig extends top.zephyrs.mybatis.semi.config.LogicDeleteConfig {
+
+        /**
+         * 全局设置-逻辑删除-字段名
+         */
+        @NestedConfigurationProperty
+        private String column;
+
+        /**
+         * 全局设置-逻辑删除-删除值
+         */
+        @NestedConfigurationProperty
+        private String deletedValue;
+
+        /**
+         * 全局设置-逻辑删除-未删除值
+         */
+        @NestedConfigurationProperty
+        private String existsValue;
+
+        @Override
+        public String getColumn() {
+            return column;
+        }
+
+        @Override
+        public void setColumn(String column) {
+            this.column = column;
+        }
+
+        @Override
+        public String getDeletedValue() {
+            return deletedValue;
+        }
+
+        @Override
+        public void setDeletedValue(String deletedValue) {
+            this.deletedValue = deletedValue;
+        }
+
+        @Override
+        public String getExistsValue() {
+            return existsValue;
+        }
+
+        @Override
+        public void setExistsValue(String existsValue) {
+            this.existsValue = existsValue;
+        }
+    }
 }

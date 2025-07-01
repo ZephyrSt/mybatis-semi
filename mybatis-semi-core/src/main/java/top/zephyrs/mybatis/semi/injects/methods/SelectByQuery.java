@@ -121,10 +121,10 @@ public class SelectByQuery extends AbstractInjectMethod {
             return EMPTY_STR;
         }
         if (fieldValue.getClass() == String.class) {
-            String script = "<if test=\"query.%s != null and query.%s != ''\">AND %s=#{query.%s}</if>";
+            String script = "<if test=\"query.%s != null and query.%s != ''\"> AND %s=#{query.%s}</if>";
             return String.format(script, fieldName, fieldName, column, fieldName);
         } else {
-            String script = "<if test=\"query.%s != null\">AND %s=#{query.%s}</if>";
+            String script = "<if test=\"query.%s != null\"> AND %s=#{query.%s}</if>";
             return String.format(script, fieldName, column, fieldName);
         }
     }
@@ -142,10 +142,10 @@ public class SelectByQuery extends AbstractInjectMethod {
         }
         String fieldName = field.getName();
         if (field.getType() == String.class) {
-            String script = "<if test=\"query.%s != null and query.%s != ''\">AND %s=#{query.%s}</if>";
+            String script = "<if test=\"query.%s != null and query.%s != ''\"> AND %s=#{query.%s}</if>";
             return String.format(script, fieldName, fieldName, column, fieldName);
         } else {
-            String script = "<if test=\"query.%s != null\">AND %s=#{query.%s}</if>";
+            String script = "<if test=\"query.%s != null\"> AND %s=#{query.%s}</if>";
             return String.format(script, fieldName, column, fieldName);
         }
     }
@@ -160,8 +160,8 @@ public class SelectByQuery extends AbstractInjectMethod {
             return EMPTY_STR;
         }
         String fieldName = field.getName();
-        String script = "<if test=\"query.%s != null and query.%s.size()>1\">AND %s between #{query.%s[0]} and #{query.%s[1]}</if>";
-        return String.format(script, fieldName, fieldName, column, fieldName, fieldName);
+        String script = "<if test=\"query.%s != null and query.%s.size()>1 and query.%s[0] != null and query.%s[1] != null\"> AND %s between #{query.%s[0]} and #{query.%s[1]}</if>";
+        return String.format(script, fieldName, fieldName, fieldName, fieldName, column, fieldName, fieldName);
     }
 
     private String in(Field field, MetaInfo metaInfo) {
@@ -211,7 +211,7 @@ public class SelectByQuery extends AbstractInjectMethod {
         } else {
             like = "concat('%',#{query." + fieldName + "},'%')";
         }
-        String script = "<if test=\"query.%s != null and query.%s != ''\">AND %s LIKE %s</if>";
+        String script = "<if test=\"query.%s != null and query.%s != ''\"> AND %s LIKE %s</if>";
         return String.format(script, fieldName, fieldName, column, like);
     }
 
@@ -241,7 +241,7 @@ public class SelectByQuery extends AbstractInjectMethod {
             return EMPTY_STR;
         }
         String fieldName = field.getName();
-        String script = "<if test=\"query.%s != null\">AND %s %s #{query.%s}</if>";
+        String script = "<if test=\"query.%s != null\"> AND %s %s #{query.%s}</if>";
         return String.format(script, fieldName, column, symbol, fieldName);
     }
 
@@ -251,7 +251,8 @@ public class SelectByQuery extends AbstractInjectMethod {
             return columnNme;
         }
         String bindColumn = field.getName();
-        if(fieldName != null && !fieldName.isEmpty()) {
+        //如果指定绑定的字段，则使用查询的字段作为字段名
+        if(fieldName == null || fieldName.isEmpty()) {
             ColumnInfo columnInfo = MetaHelper.getColumnByFieldName(metaInfo, bindColumn);
             if(columnInfo != null) {
                 return columnInfo.getColumnName();
